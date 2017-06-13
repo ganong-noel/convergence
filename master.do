@@ -12,6 +12,7 @@ from data dir
 */
 
 set more off
+do path
 
 ************
 *SERVER*
@@ -38,20 +39,17 @@ do analyze/analysis  //***TABLE 2, TABLE 3, FIGURE 7, FIGURE 8, APPENDIX TABLE 5
 
 do build/borjas1940.do
 do build/borjas1940robustness.do
+
+********BEGIN SLOW CODE**********
 do build/borjas2000.do  //Note: this code is slow!
 do build/borjas2000robustness.do //Note: this code is extremely slow!
 do build/price_file_prep //Note: this code is extremely slow!
+********END SLOW CODE**********
 
 do analyze/migReturn.do //***FIGURE 3****
 do analyze/borjasGraphs.do. //***FIGURE 4, 5***
-do analyze/migReturnRegs2.do //*APPENDIX TABLE 4**
-do analyze/migReturnPrice.do //*APPENDIX TABLE 3**
-do analyze/borjasrobustnesstables.do //***APPENDIX TABLE 5**
-
-
-
-
-********BEGIN SLOW CODE**********
+do analyze/migReturnRegs2.do //*APPENDIX TABLE 3**
+do analyze/borjasrobustnesstables.do //***APPENDIX TABLE 4**
 
 ***APPENDIX FIGURE 1***
 //uses --usa00034
