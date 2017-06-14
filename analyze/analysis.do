@@ -1,8 +1,3 @@
-/*
-xx need to add rolling coefficients code here
-*/
-
-
 
 
 use $work/state, clear
@@ -251,11 +246,7 @@ sort nameBea year
 replace sid = sid[_n-1] if year >= 2011
 duplicates tag sid year, gen(dup)
 drop if dup > 0
-/*
-bys year: egen cutoff = median(luPcCum)
-sort sid year
-gen highReg = luPcCum > cutoff
-*/
+
 sum luPcCum if year == 1965, d
 gen highRegTemp = luPcCum > r(p50) if year == 1965
 bys statea: egen highReg = max(highRegTemp)

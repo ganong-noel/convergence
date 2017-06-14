@@ -94,7 +94,6 @@ ytitle("Convergence for 20-Year Windows at Annual Rate") $all
 legend( order(1 "Annual Inc Conv Rate") region(lcolor(white)) rows(2) ring(0) pos(5))
 saving($work/nomConverge.gph, replace)  xsize(5.5) ysize(4.5);
 gr export $out/nomConverge.pdf, replace ;
-//gr export ../slides/t/nomConverge.pdf, replace ;
 
 
 
@@ -111,7 +110,6 @@ ytitle("Coefs for 20-Year Windows at Annual Rate")
 legend( order(1 "Annual Inc Conv Rate" 4 "Annual Directed Mig Rate") region(lcolor(white)) rows(2) ring(0) pos(5)) $all
 saving($work/nomConvergePop.gph, replace) ;
 gr export $out/nomConvergePop.pdf, replace ;
-//gr export ../slides/t/nomConvergePop.pdf, replace;
 
 
 scatter coef1 year if year != 1960 & year != 2010 & year <= 1980, mcolor(edkblue) ||
@@ -127,7 +125,6 @@ yline(0, lcolor(gray))
 subtitle("Convergence and Directed Migration Rates Over Time")
 ytitle("Coefs for 20-Year Windows at Annual Rate")
 legend( order(1 "Annual Inc Conv Rate" 5 "Annual Directed Mig Rate") region(lcolor(white)) rows(2) ring(0) pos(5)) $all;
-//graph export ../slides/t/nomConvergePopFade.pdf, replace;
 
 scatter coef1 year if year != 1960 & year != 2010 & year <= 1980, mcolor(edkblue*0.2) ||
 scatter coef1 year if year != 1960 & year != 2010 & year > 1980, mcolor(edkblue) ||
@@ -142,7 +139,6 @@ yline(0, lcolor(gray))
 subtitle("Convergence and Directed Migration Rates Over Time")
 ytitle("Coefs for 20-Year Windows at Annual Rate")
 legend( order(2 "Annual Inc Conv Rate" 6 "Annual Directed Mig Rate") region(lcolor(white)) rows(2) ring(0) pos(5)) $all;
-//graph export ../slides/t/nomConvergePopFade2.pdf, replace;
 
 
 

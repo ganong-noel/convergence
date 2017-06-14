@@ -5,23 +5,7 @@ This pulls together at a state level (50 obs per year)
 --Census Haines inc pop price (1930-1970)
 --Census IPUMS income price rent (1950-2010)
 --Saiz
-
-Notes for data appendix on income:
---var will be median hh wage income for 1940
---var is median _family_ income 1950-2000
---var is median hh income from IPE in 2010
-
-**xx reconstruct census measure of nonblack pop to go back to 1930
-*xx drop statefip == 99 from convTable.do
-
-Notes to self: 
-(1) I have double-checked and the pop measures from 
-Haines/Usacounties are perfectly correlated with the sum of the IPUMS weights
-(2) the net mig survival measure "gcnetmra" in Fishback and Kantor from 
-Gardner and Cohen is perfectly correlated with the one I got from historical statistics
 */
-
-
 
 ******************
 *NET MIGRATION 
@@ -158,14 +142,13 @@ rename value planner
 replace planner=1 if planner==.5
 collapse (sum) planner, by (stateabbrev)
 sort stateabbrev
-save $work/planner_surveyNEW, replace
+save $work/american_institute_planners, replace
 
 
 
 **************************
 *BUILD UNAVAILABILITY FILE
 **************************
-*use incMedian unaval year fips lma using $work/countyData.dta if unaval!=.,clear
 use incMedian unaval year fips lma using $work/countyData.dta, clear
 replace unaval = 0 if unaval == .
 g liInc=ln(incMedian)
@@ -218,7 +201,6 @@ drop _m
 
 
 *this file comes from chetty/shoag/census/convTable.do
-*xx once updated, path is ../micro/server/convTable
 rename statefips statefip
 merge 1:1 statefip year using $work/convTable, nogen keepusing(perwtCenNonblack incwageCen)
 drop if statefip == 99
@@ -231,7 +213,7 @@ merge 1:1 statea year using $work/landuse, assert(1 3) nogen
 merge 1:1 statea year using $work/zoning, assert(1 3) nogen
 
 drop if statea == "DC"
-merge m:1 stateabbrev using $work/planner_surveyNEW, assert(3) nogen
+merge m:1 stateabbrev using $work/american_institute_planners, assert(3) nogen
 
 drop if statefip == 2 | statefip == 15
 
@@ -281,11 +263,6 @@ gen dpopSur = (log(netMigSurvivalK*1000 + l10.netMigSurvivalK*1000 + l20.pop) - 
 replace saizelasticity =2.557092 if  statea=="AR"
 
 
-
-
-
-
-
 ************************
 *BUILD ELASTICITY MEASURES
 **************************
@@ -314,6 +291,7 @@ xtile BinHundred = luPc, n(100)
 xtile BinHundredCum = luPcCum, n(100)
 xtile BinHundredPlacebo = casePc, n(100)
 xtile BinHundredCumPlacebo = casePcCum, n(100)
+
 ***TABLE 3***
 xtile roll55t = luPcCum if year == 1965, n(48)
 bys statea: egen roll55 = max(roll55t)
@@ -333,7 +311,6 @@ gen winsor = min(luPc, r(p90)) / r(p90) if luPc != .
 qui sum luPcCum if luPcCum > 0, d
 gen winsorCum = min(luPcCum, r(p90)) / r(p90) if luPc != .
 
-**xx prob drop this
 xtile BinFiveRatio = docLuCum/docTotCum, n(5)
 
 

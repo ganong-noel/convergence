@@ -102,7 +102,6 @@ gen skilledadultworker = adultworker*skill
 collapse (mean) cost hhinc hhwt mig (sum) adultworker skilledadultworker, by (serial statefip pumares2mig)
 drop if adultworker==. | adultworker==0
 gen skill= skilledadultworker/adultworker
-* 86% at the poles
 keep if skill==1 | skill==0
 collapse(mean) hhinc cost if mig == 0 [w=hhwt], by(statefip pumares2mig skill)
 

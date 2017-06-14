@@ -3,13 +3,6 @@ clear all
 set mem 4g
 set more off
 
-tempfile priceindex
-use year index using $work/stateData ,clear
-duplicates drop
-sort year
-save `priceindex',replace
-
-
 use serial statefip year gq migplac5 migsea rent valueh educ incwage sea age perwt hhwt labforce using $src/data17
 
 keep if year==1940
@@ -18,8 +11,6 @@ drop if statefip==2 | statefip==11 | statefip==15
 mvdecode rent valueh incwage, mv(9999999)
 mvdecode rent valueh incwage, mv(999999)
 drop if migsea>502
-
-
 
 ****NOTE -- CHANGING DEF OF SKILLED IN 1940
 gen skill = educ >= 10
@@ -73,8 +64,6 @@ restore
 *HH LEVEL NOMINAL AND REAL INCOME CALCULATIONS
 ***************
 ***** Create unconditional household real and nominal income by SEA for non-migrant families****
-*xx we should limit sample to ages 25-65 here, right?
-*xx why are we calculating cost here at all?
 preserve
 gen adultworker= labforce==2 &  age>=25 & age<=65
 collapse (mean) adultworker cost hhinc hhwt mig, by (serial statefip sea)
@@ -92,7 +81,7 @@ gen skilledadultworker = adultworker*skill
 collapse (mean) cost hhinc hhwt mig (sum) adultworker skilledadultworker, by (serial statefip sea)
 drop if adultworker==. | adultworker==0
 gen skill= skilledadultworker/adultworker
-* 86% at the poles
+* 86% of sample is at the poles
 keep if skill==1 | skill==0
 collapse(mean) hhinc cost if mig == 0 [w=hhwt], by(statefip sea skill)
 
@@ -119,7 +108,7 @@ drop _m
 
 gen year =1940
 sort year
-merge year using `priceindex'
+merge year using $work/inflate
 keep if _merge==3
 drop _merge
 replace hhinc = hhinc*index

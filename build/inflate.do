@@ -3,7 +3,7 @@
 ******************
 *INFLATION
 ****************
-*use data from historical statistics
+*use data from historical statistics, 1880-2003
 tempfile t 
 insheet using $src/priceIndex.csv, comma clear
 keep v1 v2
@@ -14,8 +14,8 @@ destring year index, replace
 sort year
 save `t'
 
-*use data from month of January. Data from ftp://ftp.bls.gov/pub/special.requests/cpi/cpiai.txt
-insheet using $src/priceIndexNew.csv, comma clear
+*use data from month of January for 2003 forward. Data from ftp://ftp.bls.gov/pub/special.requests/cpi/cpiai.txt
+insheet using $src/priceIndex_post2003.csv, comma clear
 keep if _n >= 4 & v1 != ""
 keep v1 v2
 destring v1 v2, replace

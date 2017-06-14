@@ -3,26 +3,12 @@ clear all
 set mem 4g
 set more off
 
-tempfile priceindex
-use year index using $work/stateData ,clear
-duplicates drop
-sort year
-save `priceindex',replace
-
-
-
-
-
 use serial statefip year gq migplac5 pumares2mig rent valueh educ incwage migpuma age perwt hhwt labforce using $src/data18
 keep if year==2000
 keep if gq==1
 drop if statefip==2 | statefip==11 | statefip==15
 mvdecode rent valueh incwage, mv(9999999)
 mvdecode rent valueh incwage, mv(999999)
-
-
-
-
 
 ****NOTE -- CHANGING DEF OF SKILLED IN 1940
 gen skill = educ >= 10
@@ -84,7 +70,6 @@ gen skilledadultworker = adultworker*skill
 collapse (mean) cost hhinc hhwt mig (sum) adultworker skilledadultworker, by (serial statefip pumares2mig)
 drop if adultworker==. | adultworker==0
 gen skill= skilledadultworker/adultworker
-* 86% at the poles
 keep if skill==1 | skill==0
 collapse(mean) hhinc cost if mig == 0 [w=hhwt], by(statefip pumares2mig skill)
 
@@ -114,7 +99,7 @@ drop _m
 
 gen year=2000
 sort year
-merge year using `priceindex'
+merge year using $work/inflate
 keep if _merge==3
 drop _merge
 replace hhinc = hhinc*index

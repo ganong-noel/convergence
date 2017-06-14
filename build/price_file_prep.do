@@ -5,7 +5,7 @@ clear all
 set more off
 
 ********Creates State-Year Means********
-********Keep only HH with an adult worker in average?
+********Keep only HH with an adult worker in average
 ********This matches the requirement we need below to define skill
 *****************************************
 
@@ -119,8 +119,6 @@ gen skill_interaction = skill*avginc
 gen birth_avginc = birthincomeworker/nonmissingworker
 
 **** GIVING VERY STRANGE RESULTS!
-*egen natlavg = wtmean(incwage), by(year) weight(hhwt) 
-*replace birth_avginc = natlavg if birth_avginc==0 | adultworker==0 | birth_avginc==.
 replace birth_avginc = . if birth_avginc==0 | adultworker==0 | birth_avginc==.
 drop if birth_avginc==.
 
