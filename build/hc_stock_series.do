@@ -40,20 +40,18 @@ gen hcAgg = exp(incGroup)
 gen hcAggY = hcAgg if age <= 34
 
 preserve
-* toggle
-keep if bpl != 99 & bpl != 0 & bpl != 2 & bpl != 15 & bpl !=11
 collapse hcAggBaseRes = hcAgg hcAggBaseResY = hcAggY [w=perwt] if statefip != 99, by(statefip year)
-save "$work/lucasHcConverge_NOim", replace	
+save "$work/lucasHcConverge_im", replace	
 restore
 
 
 keep if bpl != 99 & bpl != 0 & bpl != 2 & bpl != 15 & bpl !=11
 collapse  hcAggBaseBpl = hcAgg  hcAggBaseBplY = hcAggY [w=perwt], by(bpl year)
 rename bpl statefip
-merge 1:1 statefip year using "$work/lucasHcConverge_NOim", nogen
-save "$work/lucasHcConverge_NOim", replace
+merge 1:1 statefip year using "$work/lucasHcConverge_im", nogen
+save "$work/lucasHcConverge_im", replace
 
-u "$work/lucasHcConverge_NOim", clear
+u "$work/lucasHcConverge_im", clear
 gen dHc = hcAggBaseResY - hcAggBaseBplY
 gen dlogHc = log(hcAggBaseResY) - log(hcAggBaseBplY)
 bys year: summ dlogHc

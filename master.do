@@ -16,6 +16,8 @@ do analyze/analysis  //TABLE 2, TABLE 3, FIGURE 7, FIGURE 8, APPENDIX TABLE 5
 do analyze/inequality //APPENDIX TABLE 7 
 //do analyze/housingfrac.do  //APPENDIX FIGURE 1 XXX this code makes an old version
 
+do analyze/compare_regulations.do // Footnote 26
+do analyze/revised_scalings.do // Appendix Table 6
 
 ***MICRO DATA ANALYSIS***
 do build/borjas1940.do
