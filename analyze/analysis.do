@@ -138,7 +138,6 @@ subtitle("Land Use Cases Per Million People") xlabel(1940(10)2010)
 saving($work/timeseries.gph, replace) nodraw;
 #delimit cr;
 restore
-*ylabel(1 5(5)20)
 
 
 
@@ -155,7 +154,7 @@ lfit  WRLURI roll2005t if year == 2005, graphregion(fcolor(white)) lwidth(thick)
 xsize(5.5) ysize(4.25) ytitle("Wharton Index of Regulation") 
 xtitle("Rank of Land Use Cases Per Capita, 1995-2005") 
 subtitle("Land Use Cases vs 2005 Survey, Coef: `b' SE: `se'") 
-legend(off) saving($work/qjeWrluri.gph, replace) nodraw;
+legend(off) saving($work/Wrluri.gph, replace) nodraw;
 #delimit cr;
 
 xtile roll75t = luPcCum if year == 1975, n(48)
@@ -168,7 +167,7 @@ lfit planner roll75t  if year == 1975, graphregion(fcolor(white))  lwidth(thick)
 xsize(5.5) ysize(4.25) ytitle("American Institute of Planners Measure") 
 xtitle("Rank of Land Use Cases Per Capita, 1965-1975") 
 subtitle("Land Use Cases vs 1975 Survey, Coef: `b' SE: `se'") 
-legend(off) saving($work/qjeAip.gph, replace) nodraw;
+legend(off) saving($work/Aip.gph, replace) nodraw;
 #delimit cr;
 
 
@@ -210,14 +209,16 @@ graphregion(fcolor(white)) xtitle(Log Income) ytitle(Log Housing Value)
 legend(order(1 "Low Reg State-Years" 2 "High Reg State-Years")
 ring(0) pos(11) cols(1) region(lstyle(none))) ylabel(11(0.5)12)
 subtitle(Regulations Capitalize Incomes into Prices)
-saving($work/qjeFirstStage.gph, replace) nodraw;
+saving($work/FirstStage.gph, replace) nodraw;
 #delimit cr;
 restore
 
-gr combine $work/timeseries.gph $work/qjeAip.gph $work/qjeWrluri.gph  $work/qjeFirstStage.gph, graphregion(fcolor(white)) iscale(*0.8) cols(2)
+XXXXX CHANGE FILE NAMES
+
+gr combine $work/timeseries.gph $work/Aip.gph $work/Wrluri.gph  $work/FirstStage.gph, graphregion(fcolor(white)) iscale(*0.8) cols(2)
 gr export $out/westlawValidity.pdf, replace
 
-foreach name in timeseries qjeAip qjeWrluri qjeFirstStage {
+foreach name in timeseries Aip Wrluri FirstStage {
 	gr use $work/`name'.gph
 	gr export $out/`name'.pdf, replace
 }
@@ -233,15 +234,14 @@ foreach var of varlist _all {
 rename beaIncNewA nameBea
 reshape long beaIncNew, i(nameBea) j(yearString) string
 bys nameBea: gen year = _n + 1999
-tempfile t
-save `t'
+save $work/bea_personal_inc, replace
 
 use $work/state if year >= 1940, clear
 expand 2 if year == 2010, gen(new)
 replace year = 2011 if new == 1
 expand 2 if year == 2011, gen(new2)
 replace year = 2012 if new2 == 1
-merge 1:1 nameBea year using `t', nogen update
+merge 1:1 nameBea year using $work/bea_personal_inc, nogen update
 sort nameBea year
 replace sid = sid[_n-1] if year >= 2011
 duplicates tag sid year, gen(dup)
@@ -255,12 +255,11 @@ bys statea: egen highReg = max(highRegTemp)
 *EXAMPLES FROM TWO SPECIFIC YEARS
 ****************************
 sort sid year
-*gen lagliInc = l20.liInc
 #delimit; 
 scatter dliInc lagliInc if year == 1960 & highReg == 0, mlabel(stateabbrev) mlabcolor(edkblue) msymbol(i)
 || scatter dliInc lagliInc if year == 1960 & highReg == 1, mlabel(stateabbrev) mlabcolor(maroon) msymbol(i)
 || lfit dliInc lagliInc if year == 1960 & highReg == 0, lcolor(edkblue)
-|| lfit dliInc lagliInc if year == 1960 & highReg == 1, lcolor(maroon)
+|| lfit dliInc lagliInc if year == 1960 & highReg == 1, lcolor(maroon) lpattern("-")
 ytitle("{&Delta}Inc, 1940-1960 (Annual Rate)", size(large))  
 legend(order(3 "Low Reg" 4 "High Reg") ring(0) pos(7) region(lstyle(none)) cols(1))
 xtitle("Log Income Per Cap, 1940", size(large))
@@ -272,7 +271,7 @@ saving($work/incWest1960.gph, replace) nodraw;
 scatter dliInc lagliInc if year == 2000 & highReg == 0, mlabel(stateabbrev) mlabcolor(edkblue) msymbol(i)
 || scatter dliInc lagliInc if year == 2000 & highReg == 1, mlabel(stateabbrev) mlabcolor(maroon) msymbol(i)
 || lfit dliInc lagliInc if year == 2000 & highReg == 0, lcolor(edkblue)
-|| lfit dliInc lagliInc if year == 2000 & highReg == 1, lcolor(maroon)
+|| lfit dliInc lagliInc if year == 2000 & highReg == 1, lcolor(maroon) lpattern("-")
 ytitle("{&Delta}Inc, 1980-2000 (Annual Rate)", size(large)) 
 legend(order(3 "Low Reg" 4 "High Reg") ring(0) pos(11) region(lstyle(none)) cols(1))
 xtitle("Log Income Per Cap, 1980", size(large)) graphregion(fcolor(white))
@@ -309,7 +308,7 @@ svmat coef
 gen year = _n + 1959
 drop if year > 2010
 #delimit;
-scatter coef8 year if year >= 1960 , mcolor(maroon)  
+scatter coef8 year if year >= 1960 , mcolor(maroon)  m(D)
 || scatter coef7 year if year >= 1960  & year <= 2010, mcolor(edkblue) 
 xlabel(1960(10)2010, ) xtitle(" ") ylabel(,nogrid) 
 ytitle("Convergence for 20-Year Windows at Annual Rate")
@@ -320,12 +319,12 @@ saving($work/nomConvergeSplitRegs.gph, replace)  nodraw;
 
 
 #delimit;
-scatter coef5 year if year >= 1950, mcolor(maroon)  
+scatter coef5 year if year >= 1950, mcolor(maroon)  m(D)
 || scatter coef4 year if year >= 1950, mcolor(edkblue)  
 xlabel(1960(10)2010, ) xtitle(" ") ylabel(,nogrid) 
 ytitle("Convergence for 20-Year Windows at Annual Rate")
 legend(order(1 "Coef Constrained States" 2 "Coef Unconstrained States") ring(0) pos(11) rows(2) region(lstyle(none)) size(small))
-title("Split by Saiz Housing Supply Elasticity") graphregion(fcolor(white)) 
+subtitle("Split by Saiz Housing Supply Elasticity") graphregion(fcolor(white)) 
 saving($work/nomConvergeSplit.gph, replace) nodraw;
 restore;
 
