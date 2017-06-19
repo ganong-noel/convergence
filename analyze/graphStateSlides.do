@@ -60,10 +60,10 @@ foreach num of numlist 1/6 {;
 
 scatter coef1 year if year != 1960 & year != 2010, mcolor(edkblue) ||
 scatter coef1 year if year == 1960, mcolor(maroon) msize(huge) ||
-scatter coef1 year if year == 2010, mcolor(purple) msize(huge) m(D) ||
+scatter coef1 year if year == 2010, mcolor(purple) msize(huge)  ||
 scatter coef2 year if year != 1960 & year != 2010, mcolor(edkblue) mfcolor(white) ||
 scatter coef2 year if year == 1960, mcolor(maroon) msize(huge) mfcolor(white)  ||
-scatter coef2 year if year == 2010, mcolor(purple) msize(huge) mfcolor(white) m(D) 
+scatter coef2 year if year == 2010, mcolor(purple) msize(huge) mfcolor(white) 
 ytitle(" ") xtitle(" ") xlabel(1950(10)2010, ) ylabel(-3 -2 -1 0 1 2, nogrid )
 yline(0, lcolor(gray))
 subtitle("Convergence and Directed Migration Rates Over Time")
