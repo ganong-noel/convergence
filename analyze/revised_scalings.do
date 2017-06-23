@@ -4,17 +4,17 @@
 * Load in New Data From Census
 
 * State square miles
- u  sqmi.dta , clear
+ u  $src/sqmi.dta , clear
  ren statename name
  replace name=subinstr(name," ","",.)
  sort name
- merge 1:m name using "C:\Users\dshoag\Dropbox\Danny\draft3\state\state.dta", nogen keep(match)
+ merge 1:m name using "$work/state.dta", nogen keep(match)
  sort name year
  tempfile a
  save `a', replace
  
 * Number of Local Gov'ts Per State 
- u  govts_cen1.dta  
+ u  $src/govts_cen1.dta, clear
  replace statename=subinstr(statename," ","",.)
  rename statename name
  merge 1:1 name year using `a'   //, keep(match)
@@ -52,34 +52,34 @@
  tsset statefip year
  
  xi: areg f20.dliInc i.year*BinHundred     liInc   interBinHundred        ,a(year) cl(stateabbrev)
- outreg2 liInc interBinHundred using "../tables/scalings.txt",  replace
+ outreg2 liInc interBinHundred using "$out/scalings.txt",  replace
 
  xi: areg f20.dliInc i.year*BinHundredtest liInc   interBinHundredtest    ,a(year) cl(stateabbrev)
-  outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+  outreg2 liInc interBinHundred using "$out/scalings.txt",  append
 
  xi: areg f20.dliInc i.year*BinHundredSq   liInc   interBinHundredSq      ,a(year) cl(stateabbrev)
- outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+ outreg2 liInc interBinHundred using "$out/scalings.txt",  append
 
  xi: areg f20.dliInc i.year*BinHundredlg   liInc   interBinHundredlg      ,a(year) cl(stateabbrev)
- outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+ outreg2 liInc interBinHundred using "$out/scalings.txt",  append
 
  xi: areg f20.dliInc i.year*BinHundredtot   liInc  interBinHundredtot     ,a(year) cl(stateabbrev)
- outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+ outreg2 liInc interBinHundred using "$out/scalings.txt",  append
  
  
  
  xi: areg f20.dlpop i.year*BinHundred     liInc   interBinHundred        ,a(year) cl(stateabbrev)
-  outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+  outreg2 liInc interBinHundred using "$out/scalings.txt",  append
 
  xi: areg f20.dlpop i.year*BinHundredtest liInc   interBinHundredtest    ,a(year) cl(stateabbrev)
-  outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+  outreg2 liInc interBinHundred using "$out/scalings.txt",  append
 
  xi: areg f20.dlpop i.year*BinHundredSq   liInc   interBinHundredSq      ,a(year) cl(stateabbrev)
- outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+ outreg2 liInc interBinHundred using "$out/scalings.txt",  append
 
  xi: areg f20.dlpop i.year*BinHundredlg   liInc   interBinHundredlg      ,a(year) cl(stateabbrev)
- outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+ outreg2 liInc interBinHundred using "$out/scalings.txt",  append
 
  xi: areg f20.dlpop i.year*BinHundredtot   liInc  interBinHundredtot     ,a(year) cl(stateabbrev)
- outreg2 liInc interBinHundred using "../tables/scalings.txt",  append
+ outreg2 liInc interBinHundred using "$out/scalings.txt",  append excel
 

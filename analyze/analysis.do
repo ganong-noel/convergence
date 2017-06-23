@@ -213,7 +213,6 @@ saving($work/FirstStage.gph, replace) nodraw;
 #delimit cr;
 restore
 
-XXXXX CHANGE FILE NAMES
 
 gr combine $work/timeseries.gph $work/Aip.gph $work/Wrluri.gph  $work/FirstStage.gph, graphregion(fcolor(white)) iscale(*0.8) cols(2)
 gr export $out/westlawValidity.pdf, replace
@@ -284,10 +283,6 @@ saving($work/incWest2010.gph, replace) nodraw;
 gen liIncNew = log(beaIncNew)
 sort sid year
 replace dliInc = liIncNew - l20.liInc if year == 2012
-reg dliInc l20.liInc  if year == 2012 & saiz > 2 , r
-reg dliInc l20.liInc  if year == 2012 & saiz < 2 , r
-reg dliInc l20.liInc  if year == 2012 & !highReg , r
-reg dliInc l20.liInc  if year == 2012 & highReg , r
 
 mat coef=J(64,8,.)
 local row = 1

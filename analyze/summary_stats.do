@@ -1,10 +1,8 @@
 
-global path "C:\Users\shoag\dropbox\danny\"
-
-u "$path\draft3\state\state.dta", clear
+u "$work/state.dta", clear
 sort statefip year
 
-merge 1:1 statefip year using "$path\draft4\code_shoag\lucasHcConverge_im", nogen keep(match)
+merge 1:1 statefip year using "$work/lucasHcConverge_im", nogen keep(match)
 summ hcAggBaseRes
 replace hcAggBaseRes=hcAggBaseRes/r(mean)
 

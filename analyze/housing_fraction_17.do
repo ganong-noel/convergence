@@ -4,13 +4,13 @@ set more off
 set matsize 8000
 
 *** Prep
-use src/usa_00034.dta if gq == 1 & age>= 25 & age<=65 , clear
+use ${src}/usa_00034.dta if gq == 1 & age>= 25 & age<=65 , clear
 
 * Education Dummy and Demeaning
 qui tab educd, gen(educdum) 
 
 forv j=1/24 {
-cap egen m`j' = wtmean(educdum`j'), weight(perwt)
+egen m`j' = wtmean(educdum`j'), weight(perwt)
 replace educdum`j' = educdum`j' - m`j'
 }
 
@@ -43,5 +43,6 @@ qui tab metarea, gen(metareaD)
 #delimit;
 binscatter housingfrac predictedincome [w=hhwt], controls(metareaD*)  n(50) line(none)
 ytitle("Fraction of Household Income Spent on Housing") 
-xtitle("Average Income per Adult in HH (Instrumented with Education)") 
+xtitle("Average Income per Adult in Household (Instrumented with Education)") 
 subtitle("MSA Fixed Effects") title("Household Level: Housing Share of Income") legend(off);
+gr export $out/non-homotheticity.pdf;

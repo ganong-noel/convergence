@@ -1,11 +1,3 @@
-clear all
-set mem 4g
-set more off
-tempfile priceindex
-use year index using $work/stateData ,clear
-duplicates drop
-sort year
-save `priceindex',replace
 
 
 forv j=1/5 {
@@ -131,7 +123,7 @@ drop _m
 
 gen year =1940
 sort year
-merge year using `priceindex'
+merge year using $work/inflate
 keep if _merge==3
 drop _merge
 replace hhinc = hhinc*index

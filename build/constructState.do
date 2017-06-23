@@ -202,7 +202,7 @@ drop _m
 
 *this file comes from chetty/shoag/census/convTable.do
 rename statefips statefip
-merge 1:1 statefip year using $work/convTable, nogen keepusing(perwtCenNonblack incwageCen)
+merge 1:1 statefip year using $src/convTable, nogen keepusing(perwtCenNonblack incwageCen)
 drop if statefip == 99
 
 
