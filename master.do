@@ -16,14 +16,13 @@ do analyze/graphStateSlides //FIGURES 1, 2
 do analyze/hcConverge //FIGURE A2
 do analyze/analysis  //TABLE 2, TABLE 3, FIGURE 7, FIGURE 8, APPENDIX TABLE 5
 
-//STOPPED HERE
-do analyze/inequality //APPENDIX TABLE 7  XXX breaks on gen wageMale = wageFull if sex == 1
-do analyze/housing_fraction_17.do  //APPENDIX FIGURE 1 
-do analyze/summary_stats.do  //Table 1 XXX needs to be integrated into rolling.do and updated
+do analyze/inequality //APPENDIX TABLE 7 
+do analyze/nonhomothetic.do  //APPENDIX FIGURE 1 
+do analyze/summary_stats.do  //Table 1
 do analyze/compare_regulations.do // Footnote 26
 do analyze/revised_scalings.do // Appendix Table 6
+do analyze/lawyers_and_janitors.do
 
-//STARTED  HERE
 ***MICRO DATA ANALYSIS***
 do build/borjas1940.do
 do build/borjas1940robustness.do

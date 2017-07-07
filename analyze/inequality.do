@@ -8,7 +8,7 @@ set more off
 *********************
 use ${work}/summarySamp, clear
 collapse incwageCen=incwage (rawsum) perwt* [w=perwtCen], by(statefip year)
-save $out/convTable, replace
+save $work/convTable, replace
 
 
 *****************
@@ -29,14 +29,12 @@ replace wksConsistent = wks if year == 1960 | year == 1970 | year == 2010
 gen agHours = wksConsistent*hoursConsistent
 drop hrswork1 hrswork2 uhrswork wkswork1 wkswork2 perwtCenNonblack hrsLastWkFromInterval hrsLastWkFromUsual wks
 
-gen wageMale = wageFull if sex == 1
+gen wage = log(incwage/agHours) if wksConsistent >= 40 & hoursConsistent >= 30 & sex == 1
 
-foreach var of varlist wageMale {
-	foreach year of numlist 1940(10)2010 {
-		_pctile `var' if year == `year', p(1 99)
-		replace `var' = r(r1) if `var' < r(r1)  & year == `year'
-		replace `var' = r(r2) if `var' > r(r2) & `var' != . & year == `year'
-	}
+foreach year of numlist 1940(10)2010 {
+	_pctile wage if year == `year', p(1 99)
+	replace wage = r(r1) if wage < r(r1)  & year == `year'
+	replace wage = r(r2) if wage > r(r2) & wage != . & year == `year'
 }
 
 save $work/inequality, replace

@@ -75,7 +75,7 @@ save $work/statefips, replace
 ********
 *HAINES
 ********
-*this file comes from chetty/shoag/data/haines/clean.do
+//cleaned version of file assembled by Haines (Historical Statistics of the US)
 use fips value incMedian year permit rent rentCount valueCount shareBa using $src/haines if mod(fips, 1000) == 0, clear
 gen statefips = floor(fips/1000)
 drop fips
@@ -86,7 +86,7 @@ save $work/haines, replace
 *****************
 *CENSUS PUBLISHED STATS
 *****************
-*this file comes from chetty/shoag/data/usacounties/insheetUsaCounties.do
+//cleaned version of county-level statistics from USA Counties
 use value fips year incMedHH inc permit rent rentCount valueCount shareBa using $src/usaCounties if mod(fips, 1000) == 0 & fips != 0, clear
 rename inc incMedian
 replace incMedian = incMedHH if year == 2010
@@ -100,7 +100,7 @@ save $work/cen, replace
 ******************
 *BEA INCOME AND POP FILES
 ******************
-*this file comes from chetty/shoag/bea/insheetState.do
+//cleaned version of Table SA-04
 use $src/stateSA04, clear
 drop beaTra beaEmp beaWage
 rename beaPop pop
@@ -199,7 +199,7 @@ merge m:1 year using $work/inflate, assert(2 3)
 drop if _m == 2
 drop _m
 
-
+//XXXX stopped here
 *this file comes from chetty/shoag/census/convTable.do
 rename statefips statefip
 merge 1:1 statefip year using $src/convTable, nogen keepusing(perwtCenNonblack incwageCen)
