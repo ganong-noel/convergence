@@ -70,7 +70,7 @@ subtitle("Convergence and Directed Migration Rates Over Time")
 ytitle("Coefficients for 20-Year Windows at Annual Rate")
 legend( order(1 "Annual Income Convergence Rate" 4 "Annual Directed Migration Rate") region(lcolor(white)) rows(2) ring(0) pos(5)) $all
 saving($work/nomConvergePop.gph, replace) ;
-gr export $out/nomConvergePop.pdf, replace ;
+gr export $out/nomConvergePop.eps, replace ;
 
 
 
@@ -82,7 +82,7 @@ ytitle(" ") xtitle(" ") xlabel(1950(10)2010, ) ylabel(,nogrid)
 subtitle("Timeseries of Coefs")
 legend(off) ylabel(1 1.5 2) $all
 saving($work/priceCoef.gph, replace) ;
-gr export $out/priceCoef.pdf, replace ;
+gr export $out/priceCoef.eps, replace ;
 
 
 restore;
@@ -117,7 +117,7 @@ ysc(r(0 4)) xlabel(10 10.4 10.8, nogrid ) ylabel(#3 )
 
 #delimit;
 gr combine $work/inc1960.gph $work/inc2010.gph, $allCombine xsize(5.5) ysize(3.5);
-gr export $out/inc.pdf, replace;
+gr export $out/inc.eps, replace;
 
 
 #delimit; 
@@ -145,7 +145,7 @@ saving($work/pop2010.gph, replace) nodraw;
 
 #delimit;
 gr combine $work/pop1960.gph $work/pop2010.gph,  $allCombine xsize(5.5) ysize(3.5);
-gr export $out/popYears.pdf, replace;
+gr export $out/popYears.eps, replace;
 
 
 
@@ -173,7 +173,7 @@ saving($work/price2010.gph, replace) nodraw;
 
 #delimit;
 gr combine $work/price1960.gph $work/price2010.gph,  $allCombine xsize(5.5) ysize(3.5);
-gr export $out/price.pdf, replace;
+gr export $out/price.eps, replace;
 
 
 

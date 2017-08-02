@@ -215,11 +215,11 @@ restore
 
 
 gr combine $work/timeseries.gph $work/Aip.gph $work/Wrluri.gph  $work/FirstStage.gph, graphregion(fcolor(white)) iscale(*0.8) cols(2)
-gr export $out/westlawValidity.pdf, replace
+gr export $out/westlawValidity.eps, replace
 
 foreach name in timeseries Aip Wrluri FirstStage {
 	gr use $work/`name'.gph
-	gr export $out/`name'.pdf, replace
+	gr export $out/`name'.eps, replace
 }
 
 **************
@@ -326,11 +326,11 @@ restore;
 #delimit;
 gr combine $work/incWest1960.gph $work/incWest2010.gph 
 $work/nomConvergeSplitRegs.gph $work/nomConvergeSplit.gph, graphregion(fcolor(white)) iscale(*0.8);
-graph export $out/incWest.pdf, replace;
+graph export $out/incWest.eps, replace;
 #delimit cr;
 
 foreach name in incWest1960 incWest2010 nomConvergeSplitRegs nomConvergeSplit {
 	gr use $work/`name'.gph
-	gr export $out/`name'.pdf, replace
+	gr export $out/`name'.eps, replace
 }
 

@@ -37,7 +37,7 @@ ytitle("Human Capital Convergence, 20-Year Window")  xlabel(1960(10)2010)
 ylabel(-0.3(0.1)0,nogrid) legend(off) 
 subtitle("Extent of Human Capital Convergence due to Migration Over Time") xtitle(" ")
 saving($work/hcConvergeCoefs.gph, replace) graphregion(fcolor(white));
-gr export $out/hcConvergeCoefs.pdf, replace ;
+gr export $out/hcConvergeCoefs.eps, replace ;
 restore;
 
 ************
@@ -66,4 +66,4 @@ saving($work/hcConverge2010.gph, replace) graphregion(fcolor(white));
 #delimit;
 gr combine $work/hcConverge1960.gph $work/hcConverge2010.gph,
 graphregion(fcolor(white)) cols(2) xsize(4.5) ysize(3.5);
-gr export $out/hcConverge.pdf, replace ;
+gr export $out/hcConverge.eps, replace ;

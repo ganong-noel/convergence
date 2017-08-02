@@ -45,4 +45,4 @@ binscatter housingfrac predictedincome [w=hhwt], controls(metareaD*)  n(50) line
 ytitle("Fraction of Household Income Spent on Housing") 
 xtitle("Average Income per Adult in Household (Instrumented with Education)") 
 subtitle("MSA Fixed Effects") title("Household Level: Housing Share of Income") legend(off);
-gr export $out/non-homotheticity.pdf;
+gr export $out/non-homotheticity.eps;

@@ -65,7 +65,7 @@ graph save  $work/realUnskill1940.gph, replace;
 #delimit cr;
 
 gr combine $work/nomUnskill1940.gph $work/nomSkill1940.gph $work/realUnskill1940.gph $work/realSkill1940.gph, rows(2) cols(2) graphregion(fcolor(white)) xsize(5.5) ysize(5)
-gr export $out/borjas1940.pdf, replace
+gr export $out/borjas1940.eps, replace
 
 ***************
 ***FIGURE 5 -- 2000****
@@ -137,7 +137,7 @@ graph save  $work/realUnskill2000.gph, replace;
 #delimit cr;
 
 gr combine $work/nomUnskill2000.gph $work/nomSkill2000.gph $work/realUnskill2000.gph $work/realSkill2000.gph, rows(2) cols(2) graphregion(fcolor(white)) xsize(5.5) ysize(5)
-gr export $out/borjas2000.pdf, replace
+gr export $out/borjas2000.eps, replace
 
 
 ***************
@@ -253,7 +253,7 @@ sc coefSkill  yearJit, color(maroon) m(D) || rcap skillLow skillHigh yearJit, co
 graphregion(fcolor(white)) xtitle("") ytitle("Coefficient") xlabel(1940 1960(10)2010)
 legend(order(1 "Unskilled Household" 3 "Skilled Household") ring(0) pos(11) region(lstyle(none)))
 subtitle(Effect of $1 of Statewide Income on Skill-Specific Inc Net of Housing);
-gr export $out/migReturn.pdf, replace;
+gr export $out/migReturn.eps, replace;
 #delimit cr;
 
 
