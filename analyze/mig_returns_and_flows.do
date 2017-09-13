@@ -64,7 +64,7 @@ title("Unskilled Coef: `coef' SE: `se'", size(medsmall));
 graph save  $work/realUnskill1940.gph, replace;
 #delimit cr;
 
-gr combine $work/nomUnskill1940.gph $work/nomSkill1940.gph $work/realUnskill1940.gph $work/realSkill1940.gph, rows(2) cols(2) graphregion(fcolor(white)) xsize(5.5) ysize(5)
+gr combine $work/nomUnskill1940.gph $work/nomSkill1940.gph $work/realUnskill1940.gph $work/realSkill1940.gph, rows(2) cols(2) graphregion(fcolor(white)) xsize(6) ysize(5)
 gr export $out/borjas1940.eps, replace
 
 ***************
@@ -136,7 +136,7 @@ title("Unskilled Coef: `coef' SE: `se'", size(medsmall));
 graph save  $work/realUnskill2000.gph, replace;
 #delimit cr;
 
-gr combine $work/nomUnskill2000.gph $work/nomSkill2000.gph $work/realUnskill2000.gph $work/realSkill2000.gph, rows(2) cols(2) graphregion(fcolor(white)) xsize(5.5) ysize(5)
+gr combine $work/nomUnskill2000.gph $work/nomSkill2000.gph $work/realUnskill2000.gph $work/realSkill2000.gph, rows(2) cols(2) graphregion(fcolor(white)) xsize(6) ysize(5)
 gr export $out/borjas2000.eps, replace
 
 
