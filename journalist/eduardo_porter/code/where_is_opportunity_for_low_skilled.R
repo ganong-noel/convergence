@@ -5,15 +5,20 @@ library(tidyverse)
 library(haven)
 library(readxl)
 library(labelled)
+library(rprojroot)
 
 fresh_run = FALSE
 
 if (Sys.getenv()[["USER"]] == "peterganong") {
   dropbox_path <- "~/Dropbox/convergence/draft4/work_final/"
 } else {
-  dropbox_path <- "~/gnlab/convergence/journalist/eduardo_porter"
-  #dropbox_path <- "/scratch/midway2/anisfeld"
+  dropbox_path <- "/scratch/midway2/anisfeld"
+  setwd("~/gnlab/convergence/")
 }
+
+make_path <- is_git_root$make_fix_file()
+out <- make_path("/journalist/eduardo_porter/out")
+src <- make_path("/journalist/eduardo_porter/src")
 
 
 
@@ -30,10 +35,10 @@ if (fresh_run) {
                annual_housing = 12*ifelse(owncost == 99999, rentgrs, owncost),
                real_wage = hhinc - annual_housing) %>%
         filter(age >= 25, age <= 65, educd < 101, relate == 1, empstat %in% c(1,2))
- 
-  ipums_low_inc_hh_sample %>% write_rds(file.path(dropbox_path, "filtered_ipums_with_hhinc.rds")) 
+  
+  ipums_low_inc_hh_sample %>% write_rds(file.path(src, "filtered_ipums_with_hhinc.rds")) 
 } else {
-  ipums_low_inc_hh_sample <- read_rds(file.path(dropbox_path, "filtered_ipums_with_hhinc.rds")) 
+  ipums_low_inc_hh_sample <- read_rds(file.path(src, "filtered_ipums_with_hhinc.rds")) 
 }
 
 
@@ -66,10 +71,9 @@ msa_main_output %>%
 
 
 # Assign names to migpumas
-# dropbox_path = "~/convergence/journalist/eduardo_porter/src"
-raw_puma_data <- read_xls(file.path(dropbox_path,"MSA2013_PUMA2010_crosswalk.xls"))
+raw_puma_data <- read_xls(file.path(src,"MSA2013_PUMA2010_crosswalk.xls"))
 
-puma_to_migpuma_2010 <- read_xls(file.path(dropbox_path, "puma_migpuma1_pwpuma00.xls"), skip=3, 
+puma_to_migpuma_2010 <- read_xls(file.path(src, "puma_migpuma1_pwpuma00.xls"), skip=3, 
                       col_names = c("statefip", "puma", "migplac1", "migpuma1")) %>%
   mutate_all(as.numeric)
 
@@ -125,16 +129,20 @@ migpuma_out_migration <-
 
 migpuma_main_output <-
   ipums_low_inc_hh_sample %>%
-  left_join(top_line_place_2010, by=c("migpuma1", "migplac1" = "statefip")) %>%
-  group_by(migpuma_name, migpuma1, migplac1) %>%
+  group_by(migpuma1, migplac1) %>%
   summarize(
     median_real_wage = matrixStats::weightedMedian(real_wage, w=hhwt, na.rm = TRUE)) %>%
   full_join(migpuma_out_migration, by=c("migpuma1", "migplac1")) %>%
   full_join(migpuma_in_migration, by=c("migpuma1", "migplac1")) %>%
   mutate(n_out = ifelse(is.na(n_out), 0, n_out),
-         `net migration`= n_in - n_out)
+         n_in = ifelse(is.na(n_in), 0, n_in),
+         `net migration`= n_in - n_out) %>%
+  left_join(top_line_place_2010, by=c("migpuma1", "migplac1" = "statefip")) %>%
+  mutate(migpuma_name = ifelse(is.na(migpuma_name), str_c(migplac1, "_", migpuma1), migpuma_name)) %>%
+  ungroup()
+  
 
 migpuma_main_output %>%
-  select(migpuma_name, `net migration`, everything(), -migpuma1) %>%
+  select(migpuma_name, `net migration`, everything(), -migpuma1, -migplac1, -place_count) %>%
   arrange(desc(`net migration`)) %>%
-  write_csv("low-skill_migration_by_migpuma.csv")
+  write_csv(file.path(out, "low-skill_migration_by_migpuma.csv"))
