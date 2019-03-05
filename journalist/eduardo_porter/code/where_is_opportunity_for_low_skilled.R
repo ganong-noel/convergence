@@ -71,7 +71,7 @@ msa_main_output %>%
 
 
 # Assign names to migpumas
-raw_puma_data <- read_xls(file.path(src,"MSA2013_PUMA2010_crosswalk.xls"))
+raw_puma_data <- read_xls(file.path(src,"PUMA2010_crosswalk.xls"))
 
 puma_to_migpuma_2010 <- read_xls(file.path(src, "puma_migpuma1_pwpuma00.xls"), skip=3, 
                       col_names = c("statefip", "puma", "migplac1", "migpuma1")) %>%
@@ -142,7 +142,21 @@ migpuma_main_output <-
   ungroup()
   
 
+puma_names <- read_csv(file.path(src,"2010_PUMA_Names.txt"), skip=1, col_names = c("statefip", "migpuma1", "name")) %>%
+              mutate_at(c("statefip", "migpuma1"), as.numeric)
+
+
 migpuma_main_output %>%
-  select(migpuma_name, `net migration`, everything(), -migpuma1, -migplac1, -place_count) %>%
+  mutate(statefip = ifelse(str_detect(migpuma_name, "^[0-9]*_[0-9]"), as.numeric(str_extract(migpuma_name, "^[0-9]*")), NA),
+         migpuma1 = ifelse(str_detect(migpuma_name, "^[0-9]*_[0-9]"), as.numeric(str_extract(migpuma_name, "[0-9]*$")), NA)
+  ) %>%
+  left_join(puma_names, by = c("statefip", "migpuma1"))  %>% 
+  mutate(migpuma_name = ifelse(is.na(name), migpuma_name, name)) %>%
+  select(-c(statefip, migpuma1, name, place_count)) %>%
+  select(migpuma_name, `net migration`, everything()) %>%
   arrange(desc(`net migration`)) %>%
   write_csv(file.path(out, "low-skill_migration_by_migpuma.csv"))
+
+
+
+  
