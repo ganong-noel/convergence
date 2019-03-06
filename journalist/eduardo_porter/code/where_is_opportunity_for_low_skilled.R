@@ -44,7 +44,7 @@ if (fresh_run) {
                annual_housing = 12*ifelse(owncost == 99999, rentgrs, owncost),
                real_wage = hhinc - annual_housing) %>%
         filter(age >= 25, age <= 65, educd < 101, relate == 1, empstat %in% c(1,2)) %>%
-        filter(if(level == "low-skill") educd < 101 else  educd >= 101))
+        filter(if(level == "low-skill") educd < 101 else  educd >= 101)
 
     ipums_sample %>%  write_rds(file.path(src_path, glue::glue("{level}_filtered_ipums_with_hhinc.rds"))) 
   } else {
