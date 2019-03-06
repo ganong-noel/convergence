@@ -1,0 +1,215 @@
+---
+title: "Analysis of MSA income outcomes"
+author: "Ari Anisfeld"
+date: "February 22, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Set-up
+```{r setup, include=FALSE}
+if (Sys.getenv()[["USER"]] == "peterganong") {
+  dropbox_path <- "~/Dropbox/convergence/draft4/work_final/"
+} else {
+  dropbox_path <- ""
+}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(haven)
+library(readxl)
+```
+
+```{r, message=FALSE}
+raw_borja_2000 <- read_dta(paste0(dropbox_path, "BORJAS2000FINAL.dta"))
+
+borja_2000 <- raw_borja_2000 %>%
+  select(lincShared, lr, skill, statefip, pumares2mig)
+
+ipums <- read_excel("../src/ipums_usa_puma_migpuma_2000.xlsx")
+
+puma_names <- 
+  read_table("../src/2000PUMAsASCII.txt", 
+             col_names = c("blank", "col_letters", "col_strings" ), 
+             skip = 24, 
+             na = c("", "NA")) %>% 
+    slice(1:15) %>%
+    select(-blank) %>%
+    filter(!is.na(col_letters))
+
+raw_puma_data <- 
+  read_table("../src/2000PUMAsASCII.txt", 
+             col_names = puma_names$col_strings, 
+             skip = 42, na = c("", "NA"),
+             guess_max = 100000) 
+
+puma_data <-
+  raw_puma_data %>% 
+  filter(is.na(`Census Tract Code`), !is.na(`FIPS Place Code`)) %>%
+  transmute(name = `Area Name`, 
+            msa = `Metropolitan Statistical Area/Consolidated`,
+            population = `Census 2000 100% Population Count`, 
+            PUMA = `PUMA Code`,
+            statefip = as.numeric(`FIPS State Code`))
+
+by_place <-
+  ipums %>%
+  mutate(MIGPUMA =as.numeric(`Migration PUMA, first 3 digits (MIGPUMA)`),
+         statefip = as.numeric(`State FIPS Code (STATEFIP)`)) %>%
+  left_join(puma_data, by=c("PUMA", "statefip")) %>% 
+  filter(!str_detect(name, "PUMA [0-9]{5}")) %>%
+  group_by(statefip, MIGPUMA, name) %>%
+  summarize(population_by_town = sum(population)) %>%
+  arrange(desc(population_by_town))
+
+statefip <- 
+  read_csv("https://gist.githubusercontent.com/dantonnoriega/bf1acd2290e15b91e6710b6fd3be0a53/raw/11d15233327c8080c9646c7e1f23052659db251d/us-state-ansi-fips.csv") %>%
+  transmute(stname, statefip = as.numeric(st))
+
+sanity_check <- by_place %>% ungroup() %>% summarize(`us population` = sum(population_by_town))
+us_pop <- sanity_check %>% pull(`us population`)
+sanity_check %>% knitr::kable()
+```
+# Merge characteristics
+    * what fraction of MIGPUMAs contain multiple place names: 97 percent
+    * what fraction of MIGPUMAs contain multiple MSAs: 14 percent
+    * when you have a MIGPUMA that contains multiple names, what fraction of the population lives in the place you selected.: 
+        The named places account for 33 percent of the US population.
+        The table below shows how that proportion changes as the number of places increase.
+
+
+```{r message=FALSE, warning=FALSE}
+top_line_place <- 
+  by_place %>%
+  mutate(name = str_replace_all(name, "(Remainder of | \\(part\\)| \\(balance\\))", "")) %>%
+  group_by(statefip, MIGPUMA) %>%
+  summarize(name = first(name), 
+            place_count = n(), 
+            top_place_population = first(population_by_town),
+            proportion_in_named_place = top_place_population/sum(population_by_town)) %>%
+  ungroup()
+    
+
+top_line_place %>%
+  count(place_count, proportion_in_named_place) %>%
+  mutate(bins = 
+           case_when(
+             place_count == 1 ~ "a) 1",
+             place_count <= 10 ~ "b) 2 - 10",
+             place_count <= 20 ~ "c) 11 - 20",
+             place_count <= 50 ~ "d) 21 - 50",
+             place_count <= 100 ~ "e) 51 - 100",
+             TRUE ~ "f) > 100"
+            ), 
+         total = sum(n)
+  ) %>%
+  group_by(bins) %>%
+  summarize(n_migpuma = sum(n),
+            proportion_in_bin = n_migpuma / first(total),
+            mean_proportion_in_named_place = mean(proportion_in_named_place)) %>%
+  knitr::kable(digits=3)
+
+
+top_line_place %>% summarise(percent_coverage_us = sum(top_place_population)/us_pop)
+
+
+```    
+
+```{r, include=FALSE}
+borja_2000 %>%
+  left_join(top_line_place, by = c("statefip" = "statefip", "pumares2mig" = "MIGPUMA")) %>%
+  left_join(statefip, by = "statefip") %>%
+  filter(skill == 0) %>%
+  arrange(desc(lr)) %>%
+  transmute(name, stname,
+            household_inc_everyone = round(exp(lincShared)), 
+            household_inc_minus_housing_lowskill = round(exp(lr))) %>% 
+  write_excel_csv("../out/inc_by_skill_by_place.csv")
+```
+
+# Top MSA in terms of low-skilled workers earnings
+
+```{r, warning=FALSE, message=FALSE}
+by_msa <-
+  ipums %>%
+  mutate(MIGPUMA = as.numeric(`Migration PUMA, first 3 digits (MIGPUMA)`),
+         statefip = as.numeric(`State FIPS Code (STATEFIP)`)) %>%
+  left_join(puma_data, by = c("PUMA", "statefip")) %>%
+  filter(!str_detect(name, "PUMA [0-9]{5}")) %>%
+  group_by(statefip, MIGPUMA, msa) %>%
+  arrange(desc(population)) %>%
+  summarize(name = first(name),
+            population_by_msa = sum(population)) %>%
+  arrange(desc(population_by_msa))
+
+top_line_msa <- 
+  by_msa %>%
+  group_by(statefip, MIGPUMA) %>%
+  summarize(
+    msa = first(msa), 
+    name = first(name),
+    place_count = n(), 
+    top_place_population = first(population_by_msa),
+    proportion_in_named_place = top_place_population/sum(population_by_msa)
+  ) %>%
+  ungroup()
+
+
+msa_data <-
+  raw_borja_2000 %>%
+  left_join(top_line_msa, by=c("statefip"= "statefip", "pumares2mig" = "MIGPUMA")) %>%
+  select(-c(proportion_in_named_place )) %>%
+  filter(msa!=9999) %>%
+  arrange(desc(top_place_population)) %>%
+  group_by(msa, skill) %>% 
+  summarize(name = first(name), 
+            pop = sum(top_place_population),
+            lincShared = weighted.mean(lincShared, w = basePopTot),
+            lr= weighted.mean(lr, w = basePopTot)) %>%
+  select(name, skill, everything()) %>% 
+  filter(skill == 0) %>%
+  arrange(desc(lr)) 
+
+
+model <- loess(lr~lincShared, data=msa_data)
+
+msa_data <-
+  msa_data %>%
+  ungroup() %>%
+  mutate(name = str_replace_all(name, "(Remainder of | \\(part\\)| \\(balance\\))", ""),
+         lr_hat = predict(model, lincShared),
+         resid = lr - lr_hat,
+         rank = dense_rank(desc(lr)),
+         top_6 = rank <= 7) 
+
+msa_data %>% 
+  ggplot(aes(x=lincShared, y=lr)) +
+  geom_point(aes(color=top_6)) + 
+  geom_smooth(se = F) + 
+  theme_minimal() + 
+  labs(title = "Log wages of unskilled workers compared to weighted MSA average log wage")
+  
+msa_data %>%
+  filter(pop >= 1000000) %>%
+  arrange(desc(lr)) %>% 
+  select(-skill, -msa, -lr, -top_6) %>% 
+  head() %>% 
+  knitr::kable(digits = 3)
+           
+```
+
+# Analysis
+To identify Municipal Statistical Areas (MSA) with relatively good outcomes for low-skilled workers, I first estimate the expected log-wage for low-skill workers given the average log-wages in the MSA. I then compare the actual outcomes to the expected outcomes. The key metric, "resid" in the table above, is a measure of how much better the MSA performs compared to the estimate. The table shows mostly small towns in the midwest. "resid" is measured in log points and so can be interpreted as a percentage bonus for low-skilled workers in the MSA. For example, in Kokomo there is an 19 percent X relative to an average MSA with the same shared log-wages. In the table below, I restrict the sample to MSAs with over 1 million residents. Of these larger population centers, Detroit is the top by our metric (17th overall), with low-skilled workers earning nearly 9 percent (.09 log-points) more than expected. 
+
+This analysis could be extended by including the consumption data from borja_2000.
+
+
+```{r}
+msa_data %>%
+  mutate(lr_hat = predict(model, lincShared),
+         resid = lr - lr_hat) %>%
+  filter(pop > 1000000) %>% arrange(desc(resid)) %>% select(-skill, -msa, -top_6) %>% 
+  head() %>% knitr::kable(digits = 3)
+
+```
+
