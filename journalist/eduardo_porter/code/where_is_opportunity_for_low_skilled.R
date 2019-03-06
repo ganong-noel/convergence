@@ -1,5 +1,5 @@
-# Where should and where do low-skill workers move today?
-# convergence issue #3
+# Where should and where do low-skill (high-skill) workers move today?
+# convergence issue #3 and #6
 
 rm(list=ls())
 library(tidyverse)
@@ -10,7 +10,7 @@ library(rprojroot)
 
 any_na <- function(data) data %>% ungroup() %>% mutate_all(is.na) %>% summarise_all(sum)
 
-fresh_run = FALSE
+fresh_run = TRUE
 
 if (Sys.getenv()[["USER"]] == "peterganong") {
   dropbox_path <- "~/Dropbox/convergence/draft4/work_final/"
@@ -25,24 +25,33 @@ make_path <- is_git_root$make_fix_file()
 src_path <- make_path("/journalist/eduardo_porter/src/")
 out_path <- make_path("/journalist/eduardo_porter/out/")
 
+flag = 0
+for(level in c("high_skill", "low_skill")) {
+
 if (fresh_run) {
-  raw_ipums <- read_dta(file.path(dropbox_path, "usa_00013.dta")) %>%
+  if (flag == 0){
+  raw_ipums <- read_dta(file.path(dropbox_path, "full_ipums_extract.dta")) %>% 
     select(-c(empstatd, related, educ, perwt))
+  flag = 1
+  }
   # print(object.size(raw_ipums), unit="Gb")
   # sample <- raw_ipums %>% filter(serial %% 10 == 1)
-  ipums_low_inc_hh_sample <-
+  ipums_sample <-
       raw_ipums %>%
         group_by(serial) %>%
         mutate(incwage = ifelse(incwage >= 999998, NA, incwage),
                hhinc = sum(incwage, na.rm = TRUE),
                annual_housing = 12*ifelse(owncost == 99999, rentgrs, owncost),
                real_wage = hhinc - annual_housing) %>%
-        filter(age >= 25, age <= 65, educd < 101, relate == 1, empstat %in% c(1,2))
- 
-  ipums_low_inc_hh_sample %>% write_rds(file.path(src_path, "filtered_ipums_with_hhinc.rds")) 
-} else {
-  ipums_low_inc_hh_sample <- read_rds(file.path(src_path, "filtered_ipums_with_hhinc.rds")) 
-}
+        filter(age >= 25, age <= 65, educd < 101, relate == 1, empstat %in% c(1,2)) %>%
+        filter(if(level == "low-skill") educd < 101 else  educd >= 101))
+
+    ipums_sample %>%  write_rds(file.path(src_path, glue::glue("{level}_filtered_ipums_with_hhinc.rds"))) 
+  } else {
+    ipums_sample <- read_rds(file.path(src_path, glue::glue("{level}_filtered_ipums_with_hhinc.rds"))) 
+  }
+  msa_data %>%
+    filter(if (flag == 0) `MSA Code` == 10180 else `MSA Code` == 10380)
 
 
 # Analysis MSA
@@ -56,7 +65,7 @@ msa_data <- msa_to_puma_data %>%
 
 
 msa_out_migration <-
-  ipums_low_inc_hh_sample %>%
+  ipums_sample %>%
   ungroup()  %>%
   # Only include households that moved
   filter(migpuma1 > 0) %>%
@@ -65,7 +74,7 @@ msa_out_migration <-
   transmute(migmet131, n_out)
 
 msa_main_output <-
-  ipums_low_inc_hh_sample %>%
+  ipums_sample %>%
   group_by(met2013) %>%
   summarize(
     n_obs_for_median_real_wage = n(),
@@ -81,7 +90,7 @@ msa_main_output <-
 msa_main_output %>%
   select(`MSA Title`, `net migration`,`raw net migration`, everything()) %>%
   arrange(desc(`net migration`)) %>%
-  write_csv("low-skill_migration_by_msa.csv")
+  write_csv(file.path(out_path, glue::glue("{level}_migration_by_msa.csv")))
 
 
 # Analysis MIGPUMAS
@@ -126,7 +135,7 @@ top_line_place_2016 <-
     ungroup()
 
 migpuma_in_migration <-
-  ipums_low_inc_hh_sample %>%
+  ipums_sample %>%
     ungroup()  %>%
     # Only include households that moved
     filter(migplac1 > 0) %>% 
@@ -142,7 +151,7 @@ migpuma_in_migration <-
               n_in_not_foreign = sum(n_in_not_foreign))
 
 migpuma_out_migration <-
-  ipums_low_inc_hh_sample %>%
+  ipums_sample %>%
     ungroup()  %>%
     # Only include households that moved
     filter(migplac1 > 0) %>% 
@@ -153,7 +162,7 @@ migpuma_out_migration <-
     transmute(migpuma1, migplac1, n_out, n_out_not_foreign)
 
 migpuma_real_wages <-
-  ipums_low_inc_hh_sample %>% 
+  ipums_sample %>% 
     ungroup() %>%
     select(real_wage, statefip, puma, hhwt) %>%
     left_join(state_fip_to_name, by = "statefip") %>%
@@ -182,4 +191,5 @@ migpuma_main_output <-
 migpuma_main_output %>%
   select(state, migpuma_name, `net migration`, `raw net migration`, everything(), -c(migplac1, n_in_not_foreign, n_out_not_foreign)) %>%
   arrange(desc(`net migration`)) %>%
-  write_csv(file.path(out_path, "low-skill_migration_by_migpuma.csv"))
+  write_csv(file.path(out_path, glue::glue("{level}_migration_by_migpuma.csv")))
+}
