@@ -10,7 +10,6 @@ library(rprojroot)
 
 any_na <- function(data) data %>% ungroup() %>% mutate_all(is.na) %>% summarise_all(sum)
 
-
 if (Sys.getenv()[["USER"]] == "peterganong") {
   dropbox_path <- "~/Dropbox/convergence/draft4/work_final/"
   # point the working directory to your local repo
@@ -150,6 +149,9 @@ get_msa_net_migration_df <- function(level,
     group_by(met2013) %>%
     summarize(
       n_obs_for_median_real_wage = n(),
+      mean_nominal_wage = weighted.mean(hhinc, w=hhwt, na.rm=TRUE),
+      median_nominal_wage = matrixStats::weightedMedian(hhinc, w=hhwt, na.rm = TRUE),
+      mean_real_wage = weighted.mean(real_wage, w=hhwt, na.rm=TRUE),
       median_real_wage = matrixStats::weightedMedian(real_wage, w=hhwt, na.rm = TRUE),
       n_in = sum(ifelse(migpuma1 > 0, hhwt,0))) %>%
     full_join(msa_out_migration, by=c("met2013" = "migmet131")) %>%
@@ -203,7 +205,10 @@ get_migpuma_net_migration_df <- function(level,
         summarize(
           state = first(stname), 
           n_obs_for_median_real_wage = n(),
-          median_real_wage = matrixStats::weightedMedian(real_wage, w=hhwt, na.rm = TRUE)
+          mean_nominal_wage = weighted.mean(hhinc, w=hhwt, na.rm=TRUE),
+          median_nominal_wage = matrixStats::weightedMedian(hhinc, w=hhwt, na.rm = TRUE),
+          median_real_wage = matrixStats::weightedMedian(real_wage, w=hhwt, na.rm = TRUE),
+          mean_real_wage = weighted.mean(real_wage, w=hhwt, na.rm=TRUE)
         )
     
     migpuma_main_output <-
