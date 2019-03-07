@@ -199,7 +199,7 @@ get_migpuma_net_migration_df <- function(level,
     migpuma_real_wages <-
       ipums_sample %>% 
         ungroup() %>%
-        select(real_wage, statefip, puma, hhwt) %>%
+        select(hhinc, real_wage, statefip, puma, hhwt) %>%
         left_join(puma_to_migpuma_2010, by = c("statefip", "puma")) %>%   
         group_by(migpuma1, migplac1) %>%
         summarize(
