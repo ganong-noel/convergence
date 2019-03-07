@@ -1,0 +1,145 @@
+---
+title: "Convergence figure 5"
+author: "Ari Anisfeld"
+date: "March 6, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(yaml)
+library(rprojroot)
+library(broom)
+
+make_path <- is_git_root$make_fix_file()
+CONFIG <- yaml.load_file(make_path("journalist/eduardo_porter/code/config.yml"))
+out_path <- make_path("journalist/eduardo_porter/out")
+source(str_c(CONFIG$lab_code, "prelim.R"))
+```
+
+
+```{r load_data, warning=FALSE, message=FALSE}
+# NEED TO UPDATE PATHS WHEN/IF MOVE TO SCRIPT
+migpuma_high <- read_csv("../out/high_skill_migration_by_migpuma.csv")
+migpuma_low <- read_csv("../out/low_skill_migration_by_migpuma.csv")
+msa_high <- read_csv("../out/high_skill_migration_by_msa.csv")
+msa_low <- read_csv("../out/low_skill_migration_by_msa.csv")
+
+```
+
+```{r functions, warning=FALSE, fig.width=7, fig.height=5}
+prepare_data <- function(data, name, place_type){
+  data %>%
+    select(starts_with(place_type), `net migration`, 
+           starts_with("median"), starts_with("mean")) %>%
+    mutate(skill = name,
+           net_migration = `net migration`*100, 
+           log_median_real_wage = log(median_real_wage),
+           log_median_nominal_wage = log(median_nominal_wage),
+           log_mean_real_wage = log(mean_real_wage),
+           log_mean_nominal_wage = log(mean_nominal_wage)
+           )
+}
+
+
+get_model_as_title <- function(tidy_model, group="", round_to=2) {
+  
+    stopifnot( nrow(tidy_model) == 2)
+    tidy_model <- tidy_model %>% 
+                    filter(term != "(Intercept)") %>%
+                    transmute(Coef = estimate,
+                              SE = std.error) %>%
+                    round(round_to)
+    
+  
+    title = group
+    for(col in names(tidy_model)){
+      title = glue::glue("{title} {col}: {tidy_model[, col]}")
+    }
+    
+  title
+}
+
+make_plot <- function(data=migpuma_plot, 
+                      skill.="Skilled",
+                      wage_type="log_median_real_wage", 
+                      weights. = "migpuma_population"){
+  
+  filtered_data <- data %>% filter(skill==skill.)
+
+  binscatter_output <-
+    filtered_data %>%
+      binscatter(df = .,
+                 x = wage_type, 
+                 y = "net_migration",
+                 group = "skill",
+                 weights = weights.
+    )
+  
+  
+  
+  model <- lm(as.formula(str_c("net_migration~", wage_type)), data = filtered_data)
+  tidy_model <- tidy(model) 
+  
+  filtered_data %>%
+    ggplot(
+      aes(x=!!sym(wage_type), y=net_migration)
+      ) +
+        geom_point(alpha=.05) +
+        geom_smooth(method = "lm",
+                    mapping = aes(weight = !!sym(weights.)),
+                    se = FALSE) +
+        geom_point(data = binscatter_output$df_bin, 
+                   aes(x, y)) +
+        
+        fte_theme() +
+        labs(x = "Log (Income - Housing)", 
+             y = "Net Migration", 
+             title=get_model_as_title(tidy_model, group=skill.))
+}
+
+
+migpuma_plot <- 
+  migpuma_high %>%
+  prepare_data("Skilled", "migpuma") %>%
+    bind_rows(
+      migpuma_low %>%
+        prepare_data("Unskilled", "migpuma")
+    )
+
+
+wage_list <- migpuma_plot %>% select(contains("log")) %>% names()
+
+for (skill in c("Skilled", "Unskilled")) {
+  for (wage in wage_list){
+    print(migpuma_plot %>% make_plot(skill. = skill, wage_type= wage, data = .) + 
+            labs(subtitle = str_c("By MIGPUMA ", wage)))
+  }
+}
+
+```
+
+
+# Alternative for MSAs
+
+```{r}
+msa_plot <-
+  msa_high %>%
+    prepare_data("Skilled", "MSA")%>%
+  bind_rows(
+    msa_low %>%
+      prepare_data("Unskilled", "MSA")
+  )
+
+# have not accounted for MSAs that were not assigned MIGPUMAs.
+msa_plot %>% make_plot(skill. = "Unskilled", data = .,  weights. = "MSA 2010 Population") + labs(subtitle = "By MSA")
+msa_plot %>% make_plot(skill. = "Skilled", data = .,  weights. = "MSA 2010 Population") + labs(subtitle = "By MSA")
+
+
+```
+
+
+
