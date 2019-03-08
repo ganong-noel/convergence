@@ -70,6 +70,8 @@ make_plot <- function(data=migpuma_plot,
   
   filtered_data <- data %>% filter(skill==skill.)
 
+  print(dim(filtered_data))
+  
   binscatter_output <-
     filtered_data %>%
       binscatter(df = .,
@@ -79,10 +81,10 @@ make_plot <- function(data=migpuma_plot,
                  weights = weights.
     )
   
-  
-  
-  model <- lm(as.formula(str_c("net_migration~", wage_type)), data = filtered_data)
+  model <- lm(as.formula(str_c("net_migration~", wage_type)), data = filtered_data, weights = filtered_data %>% pull(!!sym(weights.)))
   tidy_model <- tidy(model) 
+  
+  x_label <- ifelse(str_detect(wage_type, "real"), "Log (Income - Housing)", "Log (Income)")
   
   filtered_data %>%
     ggplot(
@@ -94,9 +96,9 @@ make_plot <- function(data=migpuma_plot,
                     se = FALSE) +
         geom_point(data = binscatter_output$df_bin, 
                    aes(x, y)) +
-        
+        scale_y_continuous(breaks = seq(-0.4,0.4,0.4))+
         fte_theme() +
-        labs(x = "Log (Income - Housing)", 
+        labs(x = x_label, 
              y = "Net Migration", 
              title=get_model_as_title(tidy_model, group=skill.))
 }
