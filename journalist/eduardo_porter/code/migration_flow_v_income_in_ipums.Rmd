@@ -15,25 +15,19 @@ library(rprojroot)
 library(broom)
 
 make_path <- is_git_root$make_fix_file()
-CONFIG <- yaml.load_file(make_path("journalist/eduardo_porter/code/config.yml"))
-out_path <- make_path("journalist/eduardo_porter/out")
+working_path <- make_path("journalist/eduardo_porter/")
+CONFIG <- yaml.load_file(file.path(working_path, "/code/config.yml"))
 source(str_c(CONFIG$lab_code, "prelim.R"))
+source(file.path(working_path, "/code/binscatter.R"))
 ```
 
-
-```{r load_data, warning=FALSE, message=FALSE}
-# NEED TO UPDATE PATHS WHEN/IF MOVE TO SCRIPT
-migpuma_high <- read_csv("../out/high_skill_migration_by_migpuma.csv")
-migpuma_low <- read_csv("../out/low_skill_migration_by_migpuma.csv")
-msa_high <- read_csv("../out/high_skill_migration_by_msa.csv")
-msa_low <- read_csv("../out/low_skill_migration_by_msa.csv")
-
-```
 
 ```{r functions, warning=FALSE, fig.width=7, fig.height=5}
 prepare_data <- function(data, name, place_type){
   data %>%
-    select(starts_with(place_type), `net migration`, 
+    # remove foreign places
+    filter(!is.na(`net migration`)) %>%
+    select(starts_with(place_type), starts_with("state"), `net migration`, 
            starts_with("median"), starts_with("mean")) %>%
     mutate(skill = name,
            net_migration = `net migration`*100, 
@@ -43,7 +37,6 @@ prepare_data <- function(data, name, place_type){
            log_mean_nominal_wage = log(mean_nominal_wage)
            )
 }
-
 
 get_model_as_title <- function(tidy_model, group="", round_to=2) {
   
@@ -59,18 +52,18 @@ get_model_as_title <- function(tidy_model, group="", round_to=2) {
     for(col in names(tidy_model)){
       title = glue::glue("{title} {col}: {tidy_model[, col]}")
     }
-    
   title
 }
 
 make_plot <- function(data=migpuma_plot, 
                       skill.="Skilled",
                       wage_type="log_median_real_wage", 
-                      weights. = "migpuma_population"){
+                      weights. = "migpuma_population",
+                      ylims = .4){
+  
   
   filtered_data <- data %>% filter(skill==skill.)
-
-  print(dim(filtered_data))
+  
   
   binscatter_output <-
     filtered_data %>%
@@ -81,7 +74,9 @@ make_plot <- function(data=migpuma_plot,
                  weights = weights.
     )
   
-  model <- lm(as.formula(str_c("net_migration~", wage_type)), data = filtered_data, weights = filtered_data %>% pull(!!sym(weights.)))
+  model <- lm(as.formula(str_c("net_migration~", wage_type)), 
+              data = filtered_data, 
+              weights = filtered_data %>% pull(!!sym(weights.)))
   tidy_model <- tidy(model) 
   
   x_label <- ifelse(str_detect(wage_type, "real"), "Log (Income - Housing)", "Log (Income)")
@@ -90,36 +85,63 @@ make_plot <- function(data=migpuma_plot,
     ggplot(
       aes(x=!!sym(wage_type), y=net_migration)
       ) +
-        geom_point(alpha=.05) +
+        #geom_point(alpha=.05) +
         geom_smooth(method = "lm",
                     mapping = aes(weight = !!sym(weights.)),
                     se = FALSE) +
         geom_point(data = binscatter_output$df_bin, 
                    aes(x, y)) +
-        scale_y_continuous(breaks = seq(-0.4,0.4,0.4))+
+        coord_cartesian(ylim=c(-ylims,ylims))+
         fte_theme() +
         labs(x = x_label, 
              y = "Net Migration", 
              title=get_model_as_title(tidy_model, group=skill.))
 }
 
-
-migpuma_plot <- 
-  migpuma_high %>%
-  prepare_data("Skilled", "migpuma") %>%
-    bind_rows(
-      migpuma_low %>%
-        prepare_data("Unskilled", "migpuma")
-    )
+```
 
 
+```{r load_data, warning=FALSE, message=FALSE}
+migpuma_high <- read_csv(file.path(working_path, "/out/high_skill_migration_by_migpuma.csv")) %>% prepare_data("Skilled", "migpuma")
+migpuma_low <- read_csv(file.path(working_path, "/out/low_skill_migration_by_migpuma.csv")) %>% prepare_data("Unskilled", "migpuma")
+msa_high <- read_csv(file.path(working_path, "/out/high_skill_migration_by_msa.csv")) %>% prepare_data("Skilled", "msa")
+msa_low <- read_csv(file.path(working_path, "/out/low_skill_migration_by_msa.csv")) %>% prepare_data("Unskilled", "msa")
+```
+
+
+```{r}
+
+migpuma_plot <- bind_rows(migpuma_high, migpuma_low)
 wage_list <- migpuma_plot %>% select(contains("log")) %>% names()
 
-for (skill in c("Skilled", "Unskilled")) {
-  for (wage in wage_list){
+for (wage in wage_list){
+  for (skill in c("Skilled", "Unskilled")) {
     print(migpuma_plot %>% make_plot(skill. = skill, wage_type= wage, data = .) + 
             labs(subtitle = str_c("By MIGPUMA ", wage)))
   }
+}
+```
+
+# Are low-skilled workers moving to places with high high-skilled wages?
+```{r}
+# y-variable: low-skill migration
+# x-variable: real wages for high-skill workers
+
+joint_migpuma_plot <- 
+  migpuma_high %>% 
+    select(state, migpuma1, migpuma_population,
+           starts_with("log")) %>%
+    mutate(skill = "Skilled") %>%
+  left_join(
+    migpuma_low %>% 
+      select(state, migpuma1, net_migration),
+    by = c("state", "migpuma1")
+    )
+
+for (wage in wage_list){
+  
+    print(joint_migpuma_plot %>% make_plot(wage_type= wage, data = .) +
+     labs(subtitle = str_c("By MIGPUMA ", wage)))
 }
 
 ```
@@ -128,18 +150,18 @@ for (skill in c("Skilled", "Unskilled")) {
 # Alternative for MSAs
 
 ```{r}
-msa_plot <-
-  msa_high %>%
-    prepare_data("Skilled", "MSA")%>%
-  bind_rows(
-    msa_low %>%
-      prepare_data("Unskilled", "MSA")
-  )
-
-# have not accounted for MSAs that were not assigned MIGPUMAs.
-msa_plot %>% make_plot(skill. = "Unskilled", data = .,  weights. = "MSA 2010 Population") + labs(subtitle = "By MSA")
-msa_plot %>% make_plot(skill. = "Skilled", data = .,  weights. = "MSA 2010 Population") + labs(subtitle = "By MSA")
-
+ 
+# msa_plot <-
+#   msa_high %>%
+#     prepare_data("Skilled", "MSA")%>%
+#   bind_rows(
+#     msa_low %>%
+#       prepare_data("Unskilled", "MSA")
+#   )
+# 
+# # have not accounted for MSAs that were not assigned MIGPUMAs.
+# msa_plot %>% make_plot(skill. = "Unskilled", data = .,  weights. = "MSA 2010 Population") + labs(subtitle = "By MSA")
+# msa_plot %>% make_plot(skill. = "Skilled", data = .,  weights. = "MSA 2010 Population") + labs(subtitle = "By MSA")
 
 ```
 
