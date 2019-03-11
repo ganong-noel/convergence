@@ -223,7 +223,7 @@ make_plot <- function(data = net_mig_wage_by_puma,
 }
 
 
-wage_type = c("nominal_wage_everyone", "nominal_wage_everyone", "real_wage_high_skill", "real_wage_low_skill")
+wage_type = c("nominal_wage_everyone", "nominal_wage_everyone", "real_wage_low_skill", "real_wage_high_skill")
 mig_type = c("net_mig_low_skill", "net_mig_high_skill", "net_mig_low_skill","net_mig_high_skill")
 x_label = c("Log Nominal Income", "Log Nominal Income",
             "Log (Income - Housing Cost) for Low Skill",
@@ -240,6 +240,7 @@ convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x
 )
 
 ggsave(file.path(out_path, "Covergence_replication.png"), grid_of_plots, width = 7, height = 5)
+
 
 
 ### ISSUE 11: Give names
@@ -259,13 +260,12 @@ load_place_names <- function(puma_to_migpuma_2010,
     puma_pop_2016 %>%
     left_join(puma_to_migpuma_2010, by=c("puma", "statefip")) %>%
     mutate(name = str_replace_all(name, "( \\(.*|--.*| PUMA)", "")) %>%
-    group_by(statefip, res_puma, name) %>%
+    group_by(res_stname, res_state, res_puma, name) %>%
     summarize(population_by_town = sum(population))  %>%
     # this step helps capture name of most populous puma
     arrange(desc(population_by_town)) %>%
-    group_by(statefip, res_puma) %>%
+    group_by(res_stname, res_state, res_puma) %>%
     summarize(place_name = first(name)) %>%
-    rename(res_state = statefip) %>%
     ungroup()
 }
 
