@@ -79,7 +79,7 @@ place_pop <-
   group_by(res_state, res_puma) %>%
   summarise(pop = sum(hhwt))
 
-place_wages_nominal <- 
+place_wages_nominal_all <- 
   ipums_sample %>% 
   filter(migpuma1 <= 2) %>% 
   group_by(res_state, res_puma) %>%
@@ -93,13 +93,13 @@ place_wages_real <-
   spread(key = "skill", value = "real_wage") %>%
   rename(real_wage_high_skill = high_skill, real_wage_low_skill = low_skill)
 
-place_in_migration <- 
+place_wages_nominal <- 
   ipums_sample %>% 
-  filter(migpuma1 > 2) %>% 
+  filter(migpuma1 <= 2) %>% 
   group_by(res_state, res_puma, skill) %>%
-  summarise(n_move_in  = sum(hhwt)) %>% 
-  spread(key = "skill", value = "n_move_in") %>%
-  rename(n_move_in_high_skill = high_skill, n_move_in_low_skill = low_skill)
+  summarise(nominal_wage = weighted.mean(hh_wage_inc, hhwt)) %>% 
+  spread(key = "skill", value = "nominal_wage") %>%
+  rename(nominal_wage_high_skill = high_skill, nominal_wage_low_skill = low_skill)
 
 place_out_migration <- 
   ipums_sample %>% 
@@ -110,6 +110,7 @@ place_out_migration <-
   rename(n_move_out_high_skill = high_skill, n_move_out_low_skill = low_skill)
 
 test_that("check n rows same", {
+  expect_equal(nrow(place_pop), nrow(place_wages_nominal_all))
   expect_equal(nrow(place_pop), nrow(place_wages_nominal))
   expect_equal(nrow(place_pop), nrow(place_wages_real))
   expect_equal(nrow(place_pop), nrow(place_in_migration))
@@ -130,6 +131,7 @@ test_that("migration in = migration out", {
 net_mig_wage_by_puma <- 
   place_pop %>%
   left_join(place_wages_real, by = c("res_state", "res_puma")) %>%
+  left_join(place_wages_nominal_all, by = c("res_state", "res_puma")) %>%
   left_join(place_wages_nominal, by = c("res_state", "res_puma")) %>%
   left_join(place_in_migration, by = c("res_state", "res_puma")) %>%
   left_join(place_out_migration, by = c("res_state" = "migplac1", "res_puma" = "migpuma1")) %>%
@@ -237,7 +239,7 @@ convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x
      convergence_plots[[4]])
 )
 
-ggsave("Covergence_replication.png", grid_of_plots, width = 7, height = 5)
+ggsave(file.path(out_path, "Covergence_replication.png"), grid_of_plots, width = 7, height = 5)
 
 
 ### ISSUE 11: Give names
@@ -271,6 +273,9 @@ place_names <- load_place_names(puma_to_migpuma_2010)
 
 place_names %>%
   left_join(net_mig_wage_by_puma, by = c("res_state", "res_puma")) %>%
-  arrange(desc(pop))
+  arrange(desc(pop)) %>%
+  write_csv(file.path("puma_2016_mig_wage_data.csv"))
+
+
 
 
