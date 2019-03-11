@@ -183,8 +183,8 @@ make_plot <- function(data = net_mig_wage_by_puma,
                       weights. = "pop",
                       x_label = "",
                       ylims = .004) {
-
   
+
   binscatter_output <-
     data %>%
     binscatter(x = wage_type, 
@@ -209,7 +209,7 @@ make_plot <- function(data = net_mig_wage_by_puma,
                aes(x, y)) +
     coord_cartesian(ylim=c(-ylims,ylims))+
     scale_x_log10(breaks = seq(40000, 100000, 20000),
-                  labels = scales::comma)+ # seq(40000, 100000, 20000)) +
+                  labels = scales::comma)+
     fte_theme() +
     labs(x = ifelse(x_label == "", wage_type, x_label), 
          y = "Net Migration", 
@@ -274,7 +274,7 @@ place_names <- load_place_names(puma_to_migpuma_2010)
 place_names %>%
   left_join(net_mig_wage_by_puma, by = c("res_state", "res_puma")) %>%
   arrange(desc(pop)) %>%
-  write_csv(file.path("puma_2016_mig_wage_data.csv"))
+  write_csv(file.path(out_path, "puma_2016_mig_wage_data.csv"))
 
 
 
