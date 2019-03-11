@@ -1,0 +1,68 @@
+---
+title: "Animate table 1"
+author: "Ari Anisfeld"
+date: "March 11, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gganimate)
+```
+
+```{r cars}
+library(tidyverse)
+library(haven)
+library(yaml)
+library(rprojroot)
+
+if (Sys.getenv()[["USER"]] == "peterganong") {
+  dropbox_path <- "~/repo/data_ipums/convergence/"
+  setwd("~/repo/convergence/")
+} else {
+  dropbox_path <- "~/gnlab/data_ipums/convergence/"
+  setwd("~/gnlab/convergence/")
+}
+
+make_path <- is_git_root$make_fix_file()
+src_path <- make_path("journalist/eduardo_porter/src")
+out_path <- make_path("journalist/eduardo_porter/out")
+working_path <- make_path("journalist/eduardo_porter/")
+CONFIG <- yaml.load_file(file.path(working_path, "/code/config.yml"))
+source(str_c(CONFIG$lab_code, "prelim.R"))
+
+state <- read_dta(file.path(src_path, "state.dta")) 
+
+panel <- 
+state %>% 
+  filter(year >= 1960, year <= 2010, !is.na(dliInc)) %>%
+  transmute(year = as.integer(year), stateabbrev, dliInc, lagliInc)
+
+first_pass <-
+ggplot(panel, aes(y=dliInc, x=lagliInc, group=stateabbrev)) +
+  # ggrepel::geom_text_repel(aes(label=stateabbrev)) +
+  geom_text(aes(label=stateabbrev)) +
+  scale_x_log10() +
+  # Here comes the gganimate specific bits
+  labs(title = 'Year: {frame_time}', x = 'Base log income', y = 'Growth in log income') +
+  transition_time(year) +
+  ease_aes('linear')
+
+gganimate::save_animation(first_pass,  file.path(out_name, "first_pass.gif"))
+
+```
+
+
+
+Animate relationship between base income and income growth
+
+```{r pressure, echo=FALSE}
+library(gapminder)
+library(gganimate)
+
+p <- ggplot(airquality, aes(Day, Temp)) + 
+  geom_line(size = 2, colour = 'steelblue') + 
+  transition_states(Month, 4, 1) + 
+  shadow_mark(size = 1, colour = 'grey')
+animate(p, renderer = ffmpeg_renderer())
+```
