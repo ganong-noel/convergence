@@ -4,6 +4,7 @@ library(haven)
 library(readxl)
 library(labelled)
 library(broom)
+library(gridExtra)
 library(rprojroot)
 
 if (Sys.getenv()[["USER"]] == "peterganong") {
@@ -198,7 +199,7 @@ make_plot <- function(data = net_mig_wage_by_puma,
     ggplot(
       aes(x=!!sym(wage_type), y=!!sym(mig_type))
     ) +
-    geom_point(alpha=.05) +
+    #geom_point(alpha=.05) +
     geom_smooth(method = "lm",
                 mapping = aes(weight = !!sym(weights.)),
                 se = FALSE) +
@@ -206,22 +207,37 @@ make_plot <- function(data = net_mig_wage_by_puma,
                aes(x, y)) +
     coord_cartesian(ylim=c(-ylims,ylims))+
     scale_x_log10(breaks = seq(40000, 100000, 20000),
-                  labels = seq(40000, 100000, 20000)) +
+                  labels = scales::comma)+ # seq(40000, 100000, 20000)) +
     fte_theme() +
     labs(x = ifelse(x_label == "", wage_type, x_label), 
          y = "Net Migration", 
-         title=get_model_as_title(tidy_model, group=""))
+         title=get_model_as_title(tidy_model, 
+                                  group= ifelse(str_detect(mig_type, "low"),
+                                                "Low Skill",
+                                                "High Skill"))) +
+    theme(plot.title = element_text(size=12),
+          text = element_text(size=11),
+          axis.text = element_text(size=10))
 }
 
 
-# TODO: Use some map function to make this cleaner. Put results into grid. 
+wage_type = c("nominal_wage_everyone", "nominal_wage_everyone", "real_wage_high_skill", "real_wage_low_skill")
+mig_type = c("net_mig_low_skill", "net_mig_high_skill", "net_mig_low_skill","net_mig_high_skill")
+x_label = c("Log Nominal Income", "Log Nominal Income",
+            "Log (Income - Housing Cost) for Low Skill",
+            "Log (Income - Housing Cost) for High Skill")
 
-make_plot(wage_type = "nominal_wage_everyone", mig_type = "net_mig_low_skill", x_label = "Log Nominal Income")
-make_plot(wage_type = "nominal_wage_everyone", mig_type = "net_mig_high_skill", x_label = "Log Nominal Income") 
-make_plot(wage_type = "real_wage_high_skill", mig_type = "net_mig_high_skill", 
-          x_label = "Log (Income - Housing Cost) for Skilled")
-make_plot(wage_type = "real_wage_low_skill", mig_type = "net_mig_low_skill", 
-          x_label = "Log (Income - Housing Cost) for Unskilled")
+convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x_label), make_plot)
+
+(grid_of_plots <- 
+    grid.arrange(
+     convergence_plots[[1]], 
+     convergence_plots[[2]],
+     convergence_plots[[3]],
+     convergence_plots[[4]])
+)
+
+ggsave("Covergence_replication.png", grid_of_plots, width = 7, height = 5)
 
 
 ### ISSUE 11: Give names
@@ -250,6 +266,7 @@ load_place_names <- function(puma_to_migpuma_2010,
     rename(res_state = statefip) %>%
     ungroup()
 }
+
 place_names <- load_place_names(puma_to_migpuma_2010)
 
 place_names %>%
