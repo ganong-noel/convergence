@@ -3,13 +3,14 @@ library(tidyverse)
 library(haven)
 library(readxl)
 library(labelled)
+library(broom)
 library(rprojroot)
 
 if (Sys.getenv()[["USER"]] == "peterganong") {
   dropbox_path <- "~/repo/data_ipums/convergence/"
   setwd("~/repo/convergence/")
 } else {
-  dropbox_path <- "~/gnlab/data_ipums/convergence/" #"/scratch/midway2/anisfeld/"
+  dropbox_path <- "~/gnlab/data_ipums/convergence/"
   setwd("~/gnlab/convergence/")
 }
 
@@ -18,11 +19,13 @@ src_path <- make_path("journalist/eduardo_porter/src")
 out_path <- make_path("journalist/eduardo_porter/out")
 working_path <- make_path("journalist/eduardo_porter/")
 source(file.path(working_path, "/code/binscatter.R"))
+CONFIG <- yaml.load_file(file.path(working_path, "/code/config.yml"))
+source(str_c(CONFIG$lab_code, "prelim.R"))
+
 
 # helper data ----
 
-load_puma_to_migpuma <- function(puma_population_from_scratch, 
-                                 src_path. = src_path){
+load_puma_to_migpuma <- function(src_path. = src_path){
   
   state_fip_to_name <- read_csv(file.path(src_path., "state_fip_to_name.csv"))
   
@@ -61,6 +64,9 @@ test_that(
   "serial is unique id", 
   expect_equal(n_distinct(ipums_sample$serial), nrow(ipums_sample))
 )
+
+#write_rds(ipums_sample, file.path(src_path, "ipums_sample.rds"))
+# ipums_sample <- read_rds(file.path(src_path, "ipums_sample.rds"))
 
 #collapse to puma-level stats ----
 #it seems possible that some function could generate these five data frames
@@ -148,13 +154,106 @@ test_that("signs on coefficients from Ganong-Shoag Figure 5 hold in 2012-2017", 
   expect_equal(regs_figure5[[4]]$coefficients[2,1], 0.00390, tolerance = 1e-3)
 })
 
-#Ari, please repeat for all four panels and place them in a grid, as in Figure 5
-binscatter_output <- 
-  net_mig_wage_by_puma %>%
-  binscatter(x = "nominal_wage_everyone", y = "net_mig_low_skill", weights = "pop")
-ggplot(binscatter_output$df_bin) + 
-  geom_point(aes(x = x, y = y)) + 
-  fte_theme() + 
-  scale_x_log10(breaks = seq(40000, 100000, 20000),
-                labels = seq(40000, 100000, 20000))
+
+####
+
+get_model_as_title <- function(tidy_model, group="", round_to=4) {
+  
+  stopifnot( nrow(tidy_model) == 2)
+  tidy_model <- tidy_model %>% 
+    filter(term != "(Intercept)") %>%
+    transmute(Coef = estimate,
+              SE = std.error) %>%
+    round(round_to)
+  
+  
+  title = group
+  for(col in names(tidy_model)){
+    title = glue::glue("{title} {col}: {tidy_model[, col]}")
+  }
+  title
+}
+
+make_plot <- function(data = net_mig_wage_by_puma, 
+                      mig_type = "net_mig_low_skill",
+                      wage_type = "nominal_wage_everyone", 
+                      weights. = "pop",
+                      x_label = "",
+                      ylims = .004) {
+
+  
+  binscatter_output <-
+    data %>%
+    binscatter(x = wage_type, 
+               y = mig_type,
+               weights = weights.
+    )
+  
+  model <- lm(as.formula(str_c(mig_type, "~ log(", wage_type,")")), 
+              data = data, 
+              weights = data %>% pull(!!sym(weights.)))
+  tidy_model <- tidy(model) 
+  
+  data %>%
+    ggplot(
+      aes(x=!!sym(wage_type), y=!!sym(mig_type))
+    ) +
+    geom_point(alpha=.05) +
+    geom_smooth(method = "lm",
+                mapping = aes(weight = !!sym(weights.)),
+                se = FALSE) +
+    geom_point(data = binscatter_output$df_bin, 
+               aes(x, y)) +
+    coord_cartesian(ylim=c(-ylims,ylims))+
+    scale_x_log10(breaks = seq(40000, 100000, 20000),
+                  labels = seq(40000, 100000, 20000)) +
+    fte_theme() +
+    labs(x = ifelse(x_label == "", wage_type, x_label), 
+         y = "Net Migration", 
+         title=get_model_as_title(tidy_model, group=""))
+}
+
+
+# TODO: Use some map function to make this cleaner. Put results into grid. 
+
+make_plot(wage_type = "nominal_wage_everyone", mig_type = "net_mig_low_skill", x_label = "Log Nominal Income")
+make_plot(wage_type = "nominal_wage_everyone", mig_type = "net_mig_high_skill", x_label = "Log Nominal Income") 
+make_plot(wage_type = "real_wage_high_skill", mig_type = "net_mig_high_skill", 
+          x_label = "Log (Income - Housing Cost) for Skilled")
+make_plot(wage_type = "real_wage_low_skill", mig_type = "net_mig_low_skill", 
+          x_label = "Log (Income - Housing Cost) for Unskilled")
+
+
+### ISSUE 11: Give names
+load_place_names <- function(puma_to_migpuma_2010,
+                                src_path. = src_path){
+  
+  puma_names <- read_csv(file.path(src_path.,"2010_PUMA_Names.txt"), 
+                         skip=1, col_names = c("statefip", "puma", "name")) %>%
+    mutate_at(c("statefip", "puma"), as.numeric)
+  
+  puma_pop_2016 <-
+    read_csv(file.path(src_path., "puma_population.csv")) %>%
+    # this drops Puerto Rico and other islands
+    left_join(puma_names, by=c("statefip", "puma"))
+  
+  migpuma_names <-
+    puma_pop_2016 %>%
+    left_join(puma_to_migpuma_2010, by=c("puma", "statefip")) %>%
+    mutate(name = str_replace_all(name, "( \\(.*|--.*| PUMA)", "")) %>%
+    group_by(statefip, res_puma, name) %>%
+    summarize(population_by_town = sum(population))  %>%
+    # this step helps capture name of most populous puma
+    arrange(desc(population_by_town)) %>%
+    group_by(statefip, res_puma) %>%
+    summarize(place_name = first(name)) %>%
+    rename(res_state = statefip) %>%
+    ungroup()
+}
+place_names <- load_place_names(puma_to_migpuma_2010)
+
+place_names %>%
+  left_join(net_mig_wage_by_puma, by = c("res_state", "res_puma")) %>%
+  arrange(desc(pop))
+
 
