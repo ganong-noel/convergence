@@ -80,6 +80,7 @@ place_pop <-
   # below we add back out-migrators for the analysis
   summarise(pop = sum(hhwt))
 
+
 place_wages_nominal_all <- 
   ipums_sample %>% 
   filter(migpuma1 <= 2) %>% 
@@ -138,8 +139,8 @@ net_mig_wage_by_puma <-
   left_join(place_out_migration, by = c("res_state" = "migplac1", "res_puma" = "migpuma1")) %>%
   mutate(
     pop = pop + n_move_out_low_skill + n_move_out_high_skill,
-    net_mig_low_skill = (n_move_in_low_skill - n_move_out_low_skill) / pop,
-    net_mig_high_skill = (n_move_in_high_skill - n_move_out_high_skill) / pop
+    net_mig_low_skill = 1000 * (n_move_in_low_skill - n_move_out_low_skill) / pop,
+    net_mig_high_skill = 1000 * (n_move_in_high_skill - n_move_out_high_skill) / pop
   )
 
 regs_figure5 <- 
@@ -162,7 +163,7 @@ test_that("signs on coefficients from Ganong-Shoag Figure 5 hold in 2012-2017", 
 
 ####
 
-get_model_as_title <- function(tidy_model, group="", round_to=4) {
+get_model_as_title <- function(tidy_model, group="", round_to=2) {
   
   stopifnot( nrow(tidy_model) == 2)
   tidy_model <- tidy_model %>% 
@@ -174,7 +175,7 @@ get_model_as_title <- function(tidy_model, group="", round_to=4) {
   
   title = group
   for(col in names(tidy_model)){
-    title = glue::glue("{title} {col}: {tidy_model[, col]}")
+    title = glue::glue("{title} {tolower(col)}: {tidy_model[, col]}")
   }
   title
 }
@@ -184,8 +185,12 @@ make_plot <- function(data = net_mig_wage_by_puma,
                       wage_type = "nominal_wage_everyone", 
                       weights. = "pop",
                       x_label = "",
-                      ylims = .004) {
+                      x_in_logs = FALSE,
+                      ylims = 5) {
   
+  skill_type = ifelse(str_detect(mig_type, "low"),
+                       "Low skill",
+                       "High skill")
 
   binscatter_output <-
     data %>%
@@ -199,37 +204,45 @@ make_plot <- function(data = net_mig_wage_by_puma,
               weights = data %>% pull(!!sym(weights.)))
   tidy_model <- tidy(model) 
   
-  data %>%
-    ggplot(
-      aes(x=!!sym(wage_type), y=!!sym(mig_type))
-    ) +
-    #geom_point(alpha=.05) +
-    geom_smooth(method = "lm",
-                mapping = aes(weight = !!sym(weights.)),
-                se = FALSE) +
-    geom_point(data = binscatter_output$df_bin, 
-               aes(x, y)) +
-    coord_cartesian(ylim=c(-ylims,ylims))+
-    scale_x_log10(breaks = seq(40000, 100000, 20000),
-                  labels = scales::comma)+
-    fte_theme() +
-    labs(x = ifelse(x_label == "", wage_type, x_label), 
-         y = "Net Migration", 
-         title=get_model_as_title(tidy_model, 
-                                  group= ifelse(str_detect(mig_type, "low"),
-                                                "Low Skill",
-                                                "High Skill"))) +
-    theme(plot.title = element_text(size=12),
-          text = element_text(size=11),
-          axis.text = element_text(size=10))
+  base <-
+    data %>%
+      ggplot(
+        aes(x=!!sym(wage_type), y=!!sym(mig_type))
+      ) +
+      geom_smooth(method = "lm",
+                  mapping = aes(weight = !!sym(weights.)),
+                  se = FALSE) +
+      geom_point(data = binscatter_output$df_bin, 
+                 aes(x, y)) +
+      coord_cartesian(ylim=c(-ylims,ylims))+
+      fte_theme() +
+      labs(x = x_label, 
+           y = glue::glue("{skill_type} net migration"), 
+           title=get_model_as_title(tidy_model, group= skill_type)) +
+      theme(plot.title = element_text(size=12),
+            text = element_text(size=11),
+            axis.text = element_text(size=10))
+    
+    if (x_in_logs){
+      base + 
+      scale_x_continuous(trans = scales::log_trans(),
+                         breaks = scales::trans_breaks("log", function(x) exp(x)),
+                         labels = scales::trans_format("log", scales::math_format(.x)))
+    } else {
+    base + 
+    scale_x_log10(breaks = seq(40000, 120000, 20000),
+                  labels = seq(40, 120, 20) %>%
+                    scales::dollar())
+    }
 }
 
 
-wage_type = c("nominal_wage_everyone", "nominal_wage_everyone", "real_wage_low_skill", "real_wage_high_skill")
+# Eduardo plot
+wage_type = c(rep("nominal_wage_everyone", 2), "real_wage_low_skill", "real_wage_high_skill")
 mig_type = c("net_mig_low_skill", "net_mig_high_skill", "net_mig_low_skill","net_mig_high_skill")
-x_label = c("Log Nominal Income", "Log Nominal Income",
-            "Log (Income - Housing Cost) for Low Skill",
-            "Log (Income - Housing Cost) for High Skill")
+x_label = c(rep("Nominal income (in $000s)", 2),
+            "Income - housing cost for low skill",
+            "Income - housing cost for high skill")
 
 convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x_label), make_plot)
 
@@ -241,7 +254,30 @@ convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x
      convergence_plots[[4]])
 )
 
-ggsave(file.path(out_path, "Covergence_replication.png"), grid_of_plots, width = 7, height = 5)
+ggsave(file.path(out_path, "eduardo_plot.png"), grid_of_plots, width = 7, height = 5)
+
+# Replication plot
+
+x_label = c(rep("Log nominal income", 2),
+            "Log (income - housing cost) for low skill",
+            "Log (income - housing cost) for high skill")
+
+convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x_label), 
+                          make_plot,
+                          x_in_logs=TRUE)
+
+(grid_of_plots <- 
+    grid.arrange(
+      convergence_plots[[1]], 
+      convergence_plots[[2]],
+      convergence_plots[[3]],
+      convergence_plots[[4]])
+)
+
+ggsave(file.path(out_path, "replication_plot.png"), grid_of_plots, width = 7, height = 5)
+
+
+
 
 
 
