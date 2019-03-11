@@ -240,9 +240,9 @@ make_plot <- function(data = net_mig_wage_by_puma,
 # Eduardo plot
 wage_type = c(rep("nominal_wage_everyone", 2), "real_wage_low_skill", "real_wage_high_skill")
 mig_type = c("net_mig_low_skill", "net_mig_high_skill", "net_mig_low_skill","net_mig_high_skill")
-x_label = c(rep("Nominal income (in $000s)", 2),
-            "Income - housing cost for low skill",
-            "Income - housing cost for high skill")
+x_label = c(rep("Nominal income ($000s)", 2),
+            "Income - housing cost for low skill ($000s)",
+            "Income - housing cost for high skill ($000s)")
 
 convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x_label), make_plot)
 
