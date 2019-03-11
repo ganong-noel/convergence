@@ -77,6 +77,7 @@ test_that(
 place_pop <- 
   ipums_sample %>% 
   group_by(res_state, res_puma) %>%
+  # below we add back out-migrators for the analysis
   summarise(pop = sum(hhwt))
 
 place_wages_nominal_all <- 
@@ -136,6 +137,7 @@ net_mig_wage_by_puma <-
   left_join(place_in_migration, by = c("res_state", "res_puma")) %>%
   left_join(place_out_migration, by = c("res_state" = "migplac1", "res_puma" = "migpuma1")) %>%
   mutate(
+    pop = pop + n_move_out_low_skill + n_move_out_high_skill,
     net_mig_low_skill = (n_move_in_low_skill - n_move_out_low_skill) / pop,
     net_mig_high_skill = (n_move_in_high_skill - n_move_out_high_skill) / pop
   )
