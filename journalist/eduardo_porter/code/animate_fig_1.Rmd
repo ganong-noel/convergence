@@ -30,39 +30,58 @@ out_path <- make_path("journalist/eduardo_porter/out")
 working_path <- make_path("journalist/eduardo_porter/")
 CONFIG <- yaml.load_file(file.path(working_path, "/code/config.yml"))
 source(str_c(CONFIG$lab_code, "prelim.R"))
+```
 
+```{r}
 state <- read_dta(file.path(src_path, "state.dta")) 
 
 panel <- 
 state %>% 
   filter(year >= 1960, year <= 2010, !is.na(dliInc)) %>%
-  transmute(year = as.integer(year), stateabbrev, dliInc, lagliInc)
+  transmute(year = as.integer(year), stateabbrev, dlpop, dliInc, lagliInc)
 
-first_pass <-
-ggplot(panel, aes(y=dliInc, x=lagliInc, group=stateabbrev)) +
-  # ggrepel::geom_text_repel(aes(label=stateabbrev)) +
-  geom_text(aes(label=stateabbrev)) +
-  scale_x_log10() +
-  # Here comes the gganimate specific bits
-  labs(title = 'Year: {frame_time}', x = 'Base log income', y = 'Growth in log income') +
-  transition_time(year) +
-  ease_aes('linear')
+income_growth <-
+  ggplot(panel, aes(y=dliInc, x=lagliInc, group=stateabbrev)) +
+    # ggrepel::geom_text_repel(aes(label=stateabbrev)) +
+    geom_text(aes(label=stateabbrev)) +
+    scale_x_log10() +
+    fte_theme() +
+    # Here comes the gganimate specific bits
+    labs(title = "Decline of convergence", subtitle = 'Year: {frame_time}', x = 'Log income per capita', y = 'Annual income growth rate') +
+    transition_time(year) +
+    ease_aes('linear')
 
-gganimate::save_animation(first_pass,  file.path(out_name, "first_pass.gif"))
+
+(income_growth_to_save <- animate(income_growth, 
+        duration = 40))
+
+gganimate::save_animation(income_growth_to_save,  file.path(out_path, "income_growth.gif"))
 
 ```
-
-
 
 Animate relationship between base income and income growth
 
-```{r pressure, echo=FALSE}
-library(gapminder)
-library(gganimate)
 
-p <- ggplot(airquality, aes(Day, Temp)) + 
-  geom_line(size = 2, colour = 'steelblue') + 
-  transition_states(Month, 4, 1) + 
-  shadow_mark(size = 1, colour = 'grey')
-animate(p, renderer = ffmpeg_renderer())
+```{r}
+population_growth <-
+  ggplot(panel, aes(y=dlpop, x=lagliInc, group=stateabbrev)) +
+    # ggrepel::geom_text_repel(aes(label=stateabbrev)) +
+    geom_text(aes(label=stateabbrev)) +
+    scale_x_log10() +
+    fte_theme() +
+    # Here comes the gganimate specific bits
+    labs(title = "Decline of directed migration",
+         subtitle = 'Year: {frame_time}', x = 'Annual population growth rate', y = 'Log income per capita') +
+    transition_time(year) +
+    ease_aes('linear')
+
+
+
+(population_growth_to_save <- animate(population_growth, 
+        duration = 40))
+
+gganimate::save_animation(population_growth_to_save,  file.path(out_path, "population_growth.gif"))
+
+
 ```
+
