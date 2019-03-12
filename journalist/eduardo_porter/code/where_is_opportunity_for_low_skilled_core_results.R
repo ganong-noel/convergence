@@ -3,6 +3,7 @@ library(tidyverse)
 library(haven)
 library(readxl)
 library(labelled)
+library(yaml)
 library(broom)
 library(gridExtra)
 library(rprojroot)
@@ -44,19 +45,19 @@ load_puma_to_migpuma <- function(src_path. = src_path){
 puma_to_migpuma_2010 <- load_puma_to_migpuma()
 
 # load main data ----
-raw_ipums <- read_dta(file.path(dropbox_path, "full_ipums_extract.dta")) %>% 
-  select(-c(empstatd, related, educ, perwt)) 
-  #41 seconds
-test_that("n row raw", expect_equal(nrow(raw_ipums), 15681927))
-
+raw_ipums <- read_dta(file.path(dropbox_path, "ipums_2017_no_gq.dta")) %>% 
+  select(-c(raw_ipumstd, related, educ, perwt, datanum, year, multyear, gq, cbserial)) 
+  #41 seconds                                                                               
+test_that("n row raw 2017", expect_equal(nrow(raw_ipums),object =  15014706))
+                                              
 ipums_sample <-
-  raw_ipums %>%
+  raw_ipums %>%                           
   mutate(incwage = ifelse(incwage >= 999998, NA, incwage)) %>%
   group_by(serial) %>%
   mutate(hh_wage_inc = sum(incwage, na.rm = TRUE)) %>%
   ungroup() %>%
   filter(age >= 25, age <= 65, relate == 1, empstat %in% c(1,2)) %>%
-  mutate(annual_housing = 12*ifelse(owncost == 99999, rentgrs, owncost),
+  mutate(annual_housing = ifelse(valueh > 999998, 12*rentgrs, valueh*.05),
          real_wage = hh_wage_inc - annual_housing,
          skill = ifelse(educd < 101, "low_skill", "high_skill"))  %>% 
   select(-age, -educd, -relate, -empstat) %>%
@@ -102,6 +103,14 @@ place_wages_nominal <-
   summarise(nominal_wage = weighted.mean(hh_wage_inc, hhwt)) %>% 
   spread(key = "skill", value = "nominal_wage") %>%
   rename(nominal_wage_high_skill = high_skill, nominal_wage_low_skill = low_skill)
+
+place_in_migration <- 
+  ipums_sample %>% 
+  filter(migpuma1 > 2) %>% 
+  group_by(res_state, res_puma, skill) %>%
+  summarise(n_move_in  = sum(hhwt)) %>% 
+  spread(key = "skill", value = "n_move_in") %>%
+  rename(n_move_in_high_skill = high_skill, n_move_in_low_skill = low_skill)
 
 place_out_migration <- 
   ipums_sample %>% 
@@ -311,8 +320,8 @@ place_names <- load_place_names(puma_to_migpuma_2010)
 
 place_names %>%
   left_join(net_mig_wage_by_puma, by = c("res_state", "res_puma")) %>%
-  arrange(desc(pop)) %>%
-  write_csv(file.path(out_path, "puma_2016_mig_wage_data.csv"))
+  arrange(desc(pop)) %>% View
+  write_csv(file.path(out_path, "puma_2017_mig_wage_data.csv"))
 
 
 
