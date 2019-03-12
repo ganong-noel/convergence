@@ -71,7 +71,7 @@ population_growth <-
     fte_theme() +
     # Here comes the gganimate specific bits
     labs(title = "Decline of directed migration",
-         subtitle = 'Year: {frame_time}', x = 'Annual population growth rate', y = 'Log income per capita') +
+         subtitle = 'Year: {frame_time}', x = 'Log income per capita', y  = 'Annual population growth rate') +
     transition_time(year) +
     ease_aes('linear')
 
