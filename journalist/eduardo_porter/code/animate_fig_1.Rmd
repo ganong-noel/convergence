@@ -1,0 +1,87 @@
+---
+title: "Animate table 1"
+author: "Ari Anisfeld"
+date: "March 11, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gganimate)
+```
+
+```{r cars}
+library(tidyverse)
+library(haven)
+library(yaml)
+library(rprojroot)
+
+if (Sys.getenv()[["USER"]] == "peterganong") {
+  dropbox_path <- "~/repo/data_ipums/convergence/"
+  setwd("~/repo/convergence/")
+} else {
+  dropbox_path <- "~/gnlab/data_ipums/convergence/"
+  setwd("~/gnlab/convergence/")
+}
+
+make_path <- is_git_root$make_fix_file()
+src_path <- make_path("journalist/eduardo_porter/src")
+out_path <- make_path("journalist/eduardo_porter/out")
+working_path <- make_path("journalist/eduardo_porter/")
+CONFIG <- yaml.load_file(file.path(working_path, "/code/config.yml"))
+source(str_c(CONFIG$lab_code, "prelim.R"))
+```
+
+```{r}
+state <- read_dta(file.path(src_path, "state.dta")) 
+
+panel <- 
+state %>% 
+  filter(year >= 1960, year <= 2010, !is.na(dliInc)) %>%
+  transmute(year = as.integer(year), stateabbrev, dlpop, dliInc, lagliInc)
+
+income_growth <-
+  ggplot(panel, aes(y=dliInc, x=lagliInc, group=stateabbrev)) +
+    # ggrepel::geom_text_repel(aes(label=stateabbrev)) +
+    geom_text(aes(label=stateabbrev)) +
+    scale_x_log10() +
+    fte_theme() +
+    # Here comes the gganimate specific bits
+    labs(title = "Decline of convergence", subtitle = 'Year: {frame_time}', x = 'Log income per capita', y = 'Annual income growth rate') +
+    transition_time(year) +
+    ease_aes('linear')
+
+
+(income_growth_to_save <- animate(income_growth, 
+        duration = 40))
+
+gganimate::save_animation(income_growth_to_save,  file.path(out_path, "income_growth.gif"))
+
+```
+
+Animate relationship between base income and income growth
+
+
+```{r}
+population_growth <-
+  ggplot(panel, aes(y=dlpop, x=lagliInc, group=stateabbrev)) +
+    # ggrepel::geom_text_repel(aes(label=stateabbrev)) +
+    geom_text(aes(label=stateabbrev)) +
+    scale_x_log10() +
+    fte_theme() +
+    # Here comes the gganimate specific bits
+    labs(title = "Decline of directed migration",
+         subtitle = 'Year: {frame_time}', x = 'Log income per capita', y  = 'Annual population growth rate') +
+    transition_time(year) +
+    ease_aes('linear')
+
+
+
+(population_growth_to_save <- animate(population_growth, 
+        duration = 40))
+
+gganimate::save_animation(population_growth_to_save,  file.path(out_path, "population_growth.gif"))
+
+
+```
+
