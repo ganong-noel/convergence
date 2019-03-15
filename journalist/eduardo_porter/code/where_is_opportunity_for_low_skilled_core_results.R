@@ -46,7 +46,7 @@ puma_to_migpuma_2010 <- load_puma_to_migpuma()
 
 # load main data ----
 raw_ipums <- read_dta(file.path(dropbox_path, "ipums_2017_no_gq.dta")) %>% 
-  select(-c(raw_ipumstd, related, educ, perwt, datanum, year, multyear, gq, cbserial)) 
+  select(-c(related, educ, perwt, datanum, year, multyear, gq, cbserial)) 
   #41 seconds                                                                               
 test_that("n row raw 2017", expect_equal(nrow(raw_ipums),object =  15014706))
                                               
@@ -163,10 +163,10 @@ regs_figure5 <-
   map(summary)
 
 test_that("signs on coefficients from Ganong-Shoag Figure 5 hold in 2012-2017", {
-  expect_equal(regs_figure5[[1]]$coefficients[2,1], -0.00216, tolerance = 1e-3)
-  expect_equal(regs_figure5[[2]]$coefficients[2,1], 0.003127, tolerance = 1e-3)
-  expect_equal(regs_figure5[[3]]$coefficients[2,1], 0.00562, tolerance = 1e-3)
-  expect_equal(regs_figure5[[4]]$coefficients[2,1], 0.00390, tolerance = 1e-3)
+  expect_equal(regs_figure5[[1]]$coefficients[2,1], -2.16, tolerance = 1e-3)
+  expect_equal(regs_figure5[[2]]$coefficients[2,1], 1.84, tolerance = 1e-3)
+  expect_equal(regs_figure5[[3]]$coefficients[2,1], 5.25, tolerance = 1e-3)
+  expect_equal(regs_figure5[[4]]$coefficients[2,1], 1.87, tolerance = 1e-3)
 })
 
 
@@ -195,12 +195,18 @@ make_plot <- function(data = net_mig_wage_by_puma,
                       weights. = "pop",
                       x_label = "",
                       x_in_logs = FALSE,
+                      skill_filter = FALSE,
                       ylims = 5) {
   
   skill_type = ifelse(str_detect(mig_type, "low"),
                        "Low skill",
                        "High skill")
-
+  
+  if (is.character(skill_filter)){
+    skill_type = skill_filter
+    data <- data %>% filter(skill==skill_filter)
+  }
+  
   binscatter_output <-
     data %>%
     binscatter(x = wage_type, 
@@ -286,11 +292,7 @@ convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x
 ggsave(file.path(out_path, "replication_plot.png"), grid_of_plots, width = 7, height = 5)
 
 
-
-
-
-
-### ISSUE 11: Give names
+### ISSUE 11: Give names to data
 load_place_names <- function(puma_to_migpuma_2010,
                                 src_path. = src_path){
   
