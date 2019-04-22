@@ -1,0 +1,91 @@
+---
+title: "janitors and lawyers"
+author: "Ari Anisfeld"
+date: "April 21, 2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(haven)
+library(readxl)
+library(labelled)
+library(yaml)
+library(broom)
+library(gridExtra)
+library(rprojroot)
+
+if (Sys.getenv()[["USER"]] == "peterganong") {
+  dropbox_path <- "~/repo/data_ipums/convergence/"
+} else {
+  dropbox_path <- "~/gnlab/data_ipums/convergence/"
+}
+
+make_path <- is_git_root$make_fix_file()
+src_path <- make_path("journalist/eduardo_porter/src")
+out_path <- make_path("journalist/eduardo_porter/out")
+working_path <- make_path("journalist/eduardo_porter/")
+source(file.path(working_path, "/code/binscatter.R"))
+CONFIG <- yaml.load_file(file.path(working_path, "/code/config.yml"))
+source(str_c(CONFIG$lab_code, "prelim.R"))
+
+```
+
+```{r ipums}
+# load main data ----
+raw_ipums <- read_dta(file.path(dropbox_path, "usa_00019.dta")) 
+```
+
+```{r}                                             
+filtered_sample <-
+  raw_ipums %>%    
+  select(-datanum, -serial, -hhwt) %>%
+  filter(statefip %in% c(1,5, 13, 28, 45, 9, 36, 34, 6, 53)) %>%
+  filter(age >= 25, age < 65, gq == 1) %>%
+  mutate(newyork = statefip %in% c(9, 36, 34),
+         lawyer = (occ==2100 & year==2017) | (year==1960 & occ==105), 
+         janitor = (occ==4220 & year==2017) | (year==1960 & occ==834),
+         occupation = case_when(
+                          lawyer ~ "lawyer",
+                          janitor ~ "janitor",
+                          TRUE ~ as.character(NA))) %>%
+  filter(!is.na(occupation))
+
+
+ipums_prepared <-
+  filtered_sample %>%
+    mutate(incwage = ifelse(incwage >= 999998, NA, incwage),
+           inctot = ifelse(inctot >= 999998, NA, inctot),
+           annual_housing = ifelse(valueh > 999998, 12*rentgrs, valueh*.05),
+           scaled_wage = incwage - annual_housing,
+           scaled_income = inctot- annual_housing) %>% 
+    select(-age, -valueh, -rentgrs,-lawyer, -janitor, -occ, -gq)
+
+(tristate_v_south <-
+    ipums_prepared %>%
+      filter(!statefip %in% c(6, 53)) %>%
+      select(-statefip, -countyfip) %>%
+  group_by(newyork, year, occupation) %>%
+  summarise_at(vars(inctot, incwage, scaled_income, scaled_wage), ~weighted.mean(., w=perwt, na.rm=TRUE)))
+  
+tristate_v_south %>% write_csv(file.path(out_path, "janitor_v_lawyer_tristate_v_south.csv"))
+
+```
+
+
+``` {r}
+(counties <-
+  ipums_prepared %>%
+    select(-newyork) %>%
+    filter(statefip %in% c(6, 53) & countyfip %in% c(85, 33)) %>%
+  group_by(statefip, countyfip, year, occupation)  %>%
+  summarise_at(vars(inctot, incwage, scaled_income, scaled_wage), ~weighted.mean(., w=perwt)))
+
+counties %>% write_csv(file.path(out_path, "janitor_v_lawyer_kings_santa_clara.csv"))
+```
