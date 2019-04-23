@@ -1,8 +1,8 @@
 place,year,occupation,inctot,scaled_income,Return to migration,Return to migration (%)
-deep south,1960,janitor,"$2,047","$1,705",$0,0%
-deep south,1960,lawyer,"$11,389","$10,341",$0,0.0%
-deep south,2017,janitor,"$26,032","$19,362",$0,0.0%
-deep south,2017,lawyer,"$135,719","$119,872",$0,0.0%
+deep south,1960,janitor,"$2,047","$1,705",,
+deep south,1960,lawyer,"$11,389","$10,341",,
+deep south,2017,janitor,"$26,032","$19,362",,
+deep south,2017,lawyer,"$135,719","$119,872",,
 santa clara county,1960,janitor,"$4,281","$3,530","$1,825",107%
 santa clara county,1960,lawyer,"$11,511","$10,229",$-112,-1.1%
 santa clara county,2017,janitor,"$34,427","$14,000","$-5,362",-27.7%
