@@ -39,23 +39,33 @@ source(str_c(CONFIG$lab_code, "prelim.R"))
 
 ```{r ipums}
 # load main data ----
-raw_ipums <- read_dta(file.path(dropbox_path, "usa_00019.dta")) 
+raw_ipums <- read_dta(file.path(dropbox_path, "usa_00020.dta")) 
+# testthat::test_that(expect_equal(nrow(raw_ipums), 24724543))
 ```
 
 ```{r}                                             
 filtered_sample <-
   raw_ipums %>%    
   select(-datanum, -serial, -hhwt) %>%
-  filter(statefip %in% c(1,5, 13, 28, 45, 9, 36, 34, 6, 53)) %>%
-  filter(age >= 25, age < 65, gq == 1) %>%
-  mutate(newyork = statefip %in% c(9, 36, 34),
-         lawyer = (occ==2100 & year==2017) | (year==1960 & occ==105), 
-         janitor = (occ==4220 & year==2017) | (year==1960 & occ==834),
-         occupation = case_when(
-                          lawyer ~ "lawyer",
-                          janitor ~ "janitor",
-                          TRUE ~ as.character(NA))) %>%
-  filter(!is.na(occupation))
+  filter(statefip %in% c(1,5, 13, 28, 45, 9, 36, 34, 6, 53),
+        age >= 25, age < 65, gq == 1, pernum == 1) %>%
+  mutate(place = case_when(
+                    statefip %in% c(9, 36, 34) ~ "tristate",
+                    statefip %in% c(1,5, 13, 28, 45) ~ "deep south",
+                    statefip == 6 & countyfip == 85 ~ "santa clara county",
+                    statefip == 53 & countyfip ==33 ~ "king county"
+                    ),
+         order = case_when(
+                    statefip %in% c(9, 36, 34) ~ 4,
+                    statefip %in% c(1,5, 13, 28, 45) ~ 1,
+                    statefip == 6 & countyfip == 85 ~ 2,
+                    statefip == 53 & countyfip ==33 ~ 3
+                    ),
+       occupation = case_when(
+                        (occ==2100 & year==2017) | (year==1960 & occ==105) ~ "lawyer",
+                        (occ==4220 & year==2017) | (year==1960 & occ==834) ~ "janitor"
+                        )) %>%
+  filter(!is.na(occupation), !is.na(place))
 
 
 ipums_prepared <-
@@ -64,28 +74,31 @@ ipums_prepared <-
            inctot = ifelse(inctot >= 999998, NA, inctot),
            annual_housing = ifelse(valueh > 999998, 12*rentgrs, valueh*.05),
            scaled_wage = incwage - annual_housing,
-           scaled_income = inctot- annual_housing) %>% 
-    select(-age, -valueh, -rentgrs,-lawyer, -janitor, -occ, -gq)
-
-(tristate_v_south <-
-    ipums_prepared %>%
-      filter(!statefip %in% c(6, 53)) %>%
-      select(-statefip, -countyfip) %>%
-  group_by(newyork, year, occupation) %>%
-  summarise_at(vars(inctot, incwage, scaled_income, scaled_wage), ~weighted.mean(., w=perwt, na.rm=TRUE)))
-  
-tristate_v_south %>% write_csv(file.path(out_path, "janitor_v_lawyer_tristate_v_south.csv"))
-
-```
+           scaled_income = inctot - annual_housing) %>% 
+    select(-age, -valueh, -rentgrs, -occ, -gq, -statefip, -countyfip)
 
 
-``` {r}
-(counties <-
+out_data <-
   ipums_prepared %>%
-    select(-newyork) %>%
-    filter(statefip %in% c(6, 53) & countyfip %in% c(85, 33)) %>%
-  group_by(statefip, countyfip, year, occupation)  %>%
-  summarise_at(vars(inctot, incwage, scaled_income, scaled_wage), ~weighted.mean(., w=perwt)))
+    # filter(!(incbus00 > 0 & incbusfm > 0)) %>% 
+    group_by(place, order, year, occupation) %>%
+    mutate(sample_size = n()) %>%
+    summarise_at(vars(inctot, incwage, scaled_income, scaled_wage, sample_size), 
+                 ~weighted.mean(., w=perwt, na.rm=TRUE) %>% round()) %>% 
+    arrange(order) %>%
+    group_by(year, occupation) %>%
+    mutate("Return to migration" = scales::dollar(scaled_income - first(scaled_income)),
+           "Return to migration (%)"  = scales::percent((scaled_income/first(scaled_income) - 1))) %>%
+    mutate_at(vars(inctot, incwage, scaled_income, scaled_wage), 
+                 scales::dollar)
 
-counties %>% write_csv(file.path(out_path, "janitor_v_lawyer_kings_santa_clara.csv"))
+out_data %>%
+  filter(place != "tristate") %>% 
+  select(-incwage, -scaled_wage, -order, -sample_size) %>%
+  write_csv(file.path(out_path, "janitor_v_lawyer_counties_v_south.csv"))
+
+
+
+
+
 ```
