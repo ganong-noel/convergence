@@ -80,7 +80,10 @@ ipums_prepared <-
 
 out_data <-
   ipums_prepared %>%
-    # filter(!(incbus00 > 0 & incbusfm > 0)) %>% 
+    # to get non-self employed data uncomment:
+    # mutate(incbus = ifelse(is.na(incbus00), incbusfm, incbus00),
+    #       self_employed = incbus > 0) %>% 
+    # filter(!self_employed) %>%
     group_by(place, order, year, occupation) %>%
     mutate(sample_size = n()) %>%
     summarise_at(vars(inctot, incwage, scaled_income, scaled_wage, sample_size), 
@@ -94,9 +97,19 @@ out_data <-
 
 out_data %>%
   filter(place != "tristate") %>% 
-  select(-incwage, -scaled_wage, -order, -sample_size) %>%
+  select(-incwage, -scaled_wage, -order, -sample_size) %>% 
   write_csv(file.path(out_path, "janitor_v_lawyer_counties_v_south.csv"))
 
+
+
+ ipums_prepared %>%
+  mutate(incbus = ifelse(is.na(incbus00), incbusfm, incbus00),
+        self_employed = incbus > 0) %>% 
+  group_by(place, order, year, occupation) %>%
+  summarise(self_employed_share = scales::percent(sum(self_employed*perwt)/sum(perwt))) %>%
+   ungroup() %>%
+   select(-order) %>%
+   knitr::kable(format="markdown")
 
 
 
