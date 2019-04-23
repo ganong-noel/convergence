@@ -39,7 +39,7 @@ source(str_c(CONFIG$lab_code, "prelim.R"))
 
 ```{r ipums}
 # load main data ----
-raw_ipums <- read_dta(file.path(dropbox_path, "usa_00020.dta")) 
+raw_ipums <- read_dta(file.path(dropbox_path, "usa_00020.dta"))
 # testthat::test_that(expect_equal(nrow(raw_ipums), 24724543))
 ```
 
@@ -74,7 +74,7 @@ ipums_prepared <-
            inctot = ifelse(inctot >= 999998, NA, inctot),
            annual_housing = ifelse(valueh > 999998, 12*rentgrs, valueh*.05),
            scaled_wage = incwage - annual_housing,
-           scaled_income = inctot - annual_housing) %>% 
+           scaled_income = inctot - annual_housing) %>%
     select(-age, -valueh, -rentgrs, -occ, -gq, -statefip, -countyfip)
 
 
@@ -82,29 +82,29 @@ out_data <-
   ipums_prepared %>%
     # to get non-self employed data uncomment:
     # mutate(incbus = ifelse(is.na(incbus00), incbusfm, incbus00),
-    #       self_employed = incbus > 0) %>% 
+    #       self_employed = incbus > 0) %>%
     # filter(!self_employed) %>%
     group_by(place, order, year, occupation) %>%
     mutate(sample_size = n()) %>%
-    summarise_at(vars(inctot, incwage, scaled_income, scaled_wage, sample_size), 
-                 ~weighted.mean(., w=perwt, na.rm=TRUE) %>% round()) %>% 
+    summarise_at(vars(inctot, incwage, scaled_income, scaled_wage, sample_size),
+                 ~weighted.mean(., w=perwt, na.rm=TRUE) %>% round()) %>%
     arrange(order) %>%
     group_by(year, occupation) %>%
     mutate("Return to migration" = scales::dollar(scaled_income - first(scaled_income)),
            "Return to migration (%)"  = scales::percent((scaled_income/first(scaled_income) - 1))) %>%
-    mutate_at(vars(inctot, incwage, scaled_income, scaled_wage), 
+    mutate_at(vars(inctot, incwage, scaled_income, scaled_wage),
                  scales::dollar)
 
 out_data %>%
-  filter(place != "tristate") %>% 
-  select(-incwage, -scaled_wage, -order, -sample_size) %>% 
+  filter(place != "tristate") %>%
+  select(-incwage, -scaled_wage, -order, -sample_size) %>%
   write_csv(file.path(out_path, "janitor_v_lawyer_counties_v_south.csv"))
 
 
 
  ipums_prepared %>%
   mutate(incbus = ifelse(is.na(incbus00), incbusfm, incbus00),
-        self_employed = incbus > 0) %>% 
+        self_employed = incbus > 0) %>%
   group_by(place, order, year, occupation) %>%
   summarise(self_employed_share = scales::percent(sum(self_employed*perwt)/sum(perwt))) %>%
    ungroup() %>%
