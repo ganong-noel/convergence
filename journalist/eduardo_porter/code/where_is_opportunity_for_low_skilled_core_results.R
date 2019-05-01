@@ -344,27 +344,27 @@ ggsave(file.path(out_path, "replication_plot.png"), grid_of_plots, width = 7, he
 ### ISSUE 23 getting binscatter data as csv
 
 
-ep_data <- read_excel("~/Downloads/Peter.s.2016.data.xlsx")
+ep_data <- read_excel(file.path(src_path, "Peter.s.2016.data.xlsx"))
 
 ep_data <-
   ep_data %>%
   mutate(net_mig_low_skill = net_mig_low_skill*1000,
          net_mig_high_skill = net_mig_high_skill*1000)
 
+
+# set .weights = 1 for unweighted results
 low_2016 <- get_plot_data(data = ep_data,
                    wage_type = "nominal_wage_everyone",
                    mig_type = "net_mig_low_skill",
-                   .weights = 1)
+                   .weights = "n_working_households")
 
 high_2016 <- get_plot_data(data = ep_data,
                            wage_type = "nominal_wage_everyone",
                           mig_type = "net_mig_high_skill",
-                          .weights = 1) #"n_working_households")
-
-
+                          .weights = "n_working_households")
 
 # 1940 data
-borjas <- read_dta(file.path("~/Downloads/", "BORJAS1940FINAL.dta")) 
+borjas <- read_dta(file.path(src_path, "BORJAS1940FINAL.dta")) 
 
 
 borjas <-
@@ -374,13 +374,13 @@ borjas <-
 low_1940 <- get_plot_data(data=borjas,
                           wage_type = "incShared",
                           mig_type = "netMig",
-                          .weights = 1, #"basePop",
+                          .weights = "basePop",
                           skill_filter = 0)
 
 high_1940 <- get_plot_data(data=borjas,
                           wage_type = "incShared",
                           mig_type = "netMig",
-                          .weights = 1, #"basePop",
+                          .weights = "basePop",
                           skill_filter = 1)
 
 
@@ -434,7 +434,7 @@ models <-
   ) %>%
   select(type, year, term, estimate, std.error)
 
-write_csv(models, file.path(out_path, "unweighted_model_outputs_1940_2016.csv"))
+write_csv(models, file.path(out_path, "pop_weighted_model_outputs_1940_2016.csv"))
 
 
 read_csv(file.path(out_path, "pop_weighted_model_outputs_1940_2016.csv"))
