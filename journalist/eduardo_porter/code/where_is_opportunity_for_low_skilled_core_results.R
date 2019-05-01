@@ -163,7 +163,7 @@ regs_figure5 <-
   map(summary)
 
 test_that("signs on coefficients from Ganong-Shoag Figure 5 hold in 2012-2017", {
-  expect_equal(regs_figure5[[1]]$coefficients[2,1], -2.16, tolerance = 1e-3)
+  expect_equal(regs_figure5[[1]]$coefficients[2,1], -2.68, tolerance = 1e-3)
   expect_equal(regs_figure5[[2]]$coefficients[2,1], 1.84, tolerance = 1e-3)
   expect_equal(regs_figure5[[3]]$coefficients[2,1], 5.25, tolerance = 1e-3)
   expect_equal(regs_figure5[[4]]$coefficients[2,1], 1.87, tolerance = 1e-3)
@@ -189,66 +189,115 @@ get_model_as_title <- function(tidy_model, group="", round_to=2) {
   title
 }
 
-make_plot <- function(data = net_mig_wage_by_puma, 
-                      mig_type = "net_mig_low_skill",
-                      wage_type = "nominal_wage_everyone", 
-                      weights. = "pop",
-                      x_label = "",
-                      x_in_logs = FALSE,
-                      skill_filter = FALSE,
-                      ylims = 5) {
-  
-  skill_type = ifelse(str_detect(mig_type, "low"),
-                       "Low skill",
-                       "High skill")
-  
-  if (is.character(skill_filter)){
-    skill_type = skill_filter
-    data <- data %>% filter(skill==skill_filter)
-  }
-  
-  binscatter_output <-
-    data %>%
-    binscatter(x = wage_type, 
-               y = mig_type,
-               weights = weights.
-    )
-  
-  model <- lm(as.formula(str_c(mig_type, "~ log(", wage_type,")")), 
-              data = data, 
-              weights = data %>% pull(!!sym(weights.)))
-  tidy_model <- tidy(model) 
-  
-  base <-
-    data %>%
-      ggplot(
-        aes(x=!!sym(wage_type), y=!!sym(mig_type))
-      ) +
-      geom_smooth(method = "lm",
-                  mapping = aes(weight = !!sym(weights.)),
-                  se = FALSE) +
-      geom_point(data = binscatter_output$df_bin, 
-                 aes(x, y)) +
-      coord_cartesian(ylim=c(-ylims,ylims))+
-      fte_theme() +
-      labs(x = x_label, 
-           y = glue::glue("{skill_type} net migration"), 
-           title=get_model_as_title(tidy_model, group= skill_type)) +
-      theme(plot.title = element_text(size=12),
-            text = element_text(size=11),
-            axis.text = element_text(size=10))
+get_plot_data <- 
+  function(
+    data = net_mig_wage_by_puma, 
+    mig_type = "net_mig_low_skill",
+    wage_type = "nominal_wage_everyone", 
+    .weights = "pop",
+    skill_filter = NULL,
+    ...) {
+      
+        if (.weights == 1){
+          data$weights = 1
+          .weights = "weights"
+        }
+        
+        if (is.null(skill_filter)){
+          skill_type = case_when(str_detect(mig_type, "low") ~ "Low skill",
+                                 str_detect(mig_type, "high") ~ "High skill",
+                                 TRUE ~ "Error")
+          
+        } else {
+          data <- data %>% filter(skill==skill_filter)
+          skill_type = ifelse(skill_filter == 1,
+                              "High skill",
+                              "Low skill")
+        
+        }
+          
+        
+        binscatter_output <-
+          data %>%
+          binscatter(x = wage_type, 
+                     y = mig_type,
+                     weights = .weights
+          ) %>%
+          .$df_bin %>%
+          transmute(!!sym(wage_type) := x,
+                 !!sym(mig_type) := y,
+                 type = skill_type)
+        
+        model <- lm(as.formula(str_c(mig_type, "~ log(", wage_type,")")), 
+                    data = data, 
+                    weights = data %>% pull(!!sym(.weights)))
+        tidy_model <- tidy(model) 
     
-    if (x_in_logs){
-      base + 
-      scale_x_continuous(trans = scales::log_trans(),
-                         breaks = scales::trans_breaks("log", function(x) exp(x)),
-                         labels = scales::trans_format("log", scales::math_format(.x)))
-    } else {
-    base + 
-    scale_x_log10(breaks = seq(40000, 120000, 20000),
-                  labels = seq(40, 120, 20) %>%
-                    scales::dollar())
+        return(list(binscatter_data = binscatter_output, 
+                    tidy_model = tidy_model, 
+                    skill_type = skill_type))
+
+}          
+
+
+make_plot <- 
+  function(
+    data = net_mig_wage_by_puma, 
+    mig_type = "net_mig_low_skill",
+    wage_type = "nominal_wage_everyone", 
+    .weights = "pop",
+    x_label = "",
+    x_in_logs = FALSE,
+    skill_filter = NULL,
+    ylims = 5
+    ) {
+    
+    if (.weights == 1){
+      data$weights = 1
+      .weights = "weights"
     }
+      
+
+    plot_data <- get_plot_data(data, 
+                               mig_type, 
+                               wage_type, 
+                               .weights,
+                               skill_filter = skill_filter, 
+                             )
+    
+    binscatter_data <- plot_data[[1]]
+    tidy_model <- plot_data[[2]]
+    skill_type <- plot_data[[3]]
+    
+    base <-
+      data %>%
+        ggplot(
+          aes(x=!!sym(wage_type), y=!!sym(mig_type))
+        ) +
+        geom_smooth(method = "lm",
+                    mapping = aes(weight = !!sym(.weights)),
+                    se = FALSE) +
+        geom_point(data = binscatter_data) +
+        coord_cartesian(ylim=c(-ylims,ylims))+
+        fte_theme() +
+        labs(x = x_label, 
+             y = glue::glue("{skill_type} net migration"), 
+             title=get_model_as_title(tidy_model, group= skill_type)) +
+        theme(plot.title = element_text(size=12),
+              text = element_text(size=11),
+              axis.text = element_text(size=10))
+      
+      if (x_in_logs){
+        base + 
+        scale_x_continuous(trans = scales::log_trans(),
+                           breaks = scales::trans_breaks("log", function(x) exp(x)),
+                           labels = scales::trans_format("log", scales::math_format(.x)))
+      } else {
+      base + 
+      scale_x_log10(breaks = seq(40000, 120000, 20000),
+                    labels = seq(40, 120, 20) %>%
+                      scales::dollar())
+      }
 }
 
 
@@ -291,6 +340,118 @@ convergence_plots <- pmap(list(wage_type=wage_type, mig_type=mig_type, x_label=x
 
 ggsave(file.path(out_path, "replication_plot.png"), grid_of_plots, width = 7, height = 5)
 
+
+### ISSUE 23 getting binscatter data as csv
+
+
+ep_data <- read_excel("~/Downloads/Peter.s.2016.data.xlsx")
+
+ep_data <-
+  ep_data %>%
+  mutate(net_mig_low_skill = net_mig_low_skill*1000,
+         net_mig_high_skill = net_mig_high_skill*1000)
+
+low_2016 <- get_plot_data(data = ep_data,
+                   wage_type = "nominal_wage_everyone",
+                   mig_type = "net_mig_low_skill",
+                   .weights = 1)
+
+high_2016 <- get_plot_data(data = ep_data,
+                           wage_type = "nominal_wage_everyone",
+                          mig_type = "net_mig_high_skill",
+                          .weights = 1) #"n_working_households")
+
+
+
+# 1940 data
+borjas <- read_dta(file.path("~/Downloads/", "BORJAS1940FINAL.dta")) 
+
+
+borjas <-
+  borjas %>%
+    mutate(netMig = netMig*1000)
+
+low_1940 <- get_plot_data(data=borjas,
+                          wage_type = "incShared",
+                          mig_type = "netMig",
+                          .weights = 1, #"basePop",
+                          skill_filter = 0)
+
+high_1940 <- get_plot_data(data=borjas,
+                          wage_type = "incShared",
+                          mig_type = "netMig",
+                          .weights = 1, #"basePop",
+                          skill_filter = 1)
+
+
+
+binscatter_data_2016 <-
+  bind_rows(
+    low_2016$binscatter_data %>%
+      rename("net_mig" = net_mig_low_skill),  
+    high_2016$binscatter_data  %>%
+      rename("net_mig" = net_mig_high_skill)
+  ) %>% 
+  ungroup() %>%
+  mutate(year = 2016) %>%
+  select(-cut)
+
+binscatter_data_1940 <-
+  bind_rows(
+    low_1940$binscatter_data,  
+    high_1940$binscatter_data  
+  ) %>% 
+  ungroup() %>%
+  rename("net_mig" = netMig,
+         "nominal_wage_everyone" = incShared
+  ) %>%
+  mutate(year = 1940) %>%
+  select(-cut)
+
+binscatter_data <-
+  bind_rows(
+    binscatter_data_1940,
+    binscatter_data_2016
+  )
+
+write_csv(binscatter_data, file.path(out_path, "binscatter_data_1940_2016.csv"))
+
+
+models <-
+  bind_rows(
+    low_2016$tidy_model %>%
+      mutate(type = low_2016$skill_type,
+             year = 2016),
+    high_2016$tidy_model %>%
+      mutate(type = high_2016$skill_type,
+             year = 2016),
+    low_1940$tidy_model %>%
+      mutate(type = low_1940$skill_type,
+             year = 1940),
+    high_1940$tidy_model %>%
+      mutate(type = high_1940$skill_type,
+             year = 1940),
+  ) %>%
+  select(type, year, term, estimate, std.error)
+
+write_csv(models, file.path(out_path, "unweighted_model_outputs_1940_2016.csv"))
+
+
+read_csv(file.path(out_path, "pop_weighted_model_outputs_1940_2016.csv"))
+
+# binscatter_data %>%
+#   filter(year == 2016) %>%
+#   ggplot(aes(x=nominal_wage_everyone, y = net_mig)) + 
+#   geom_point() + 
+#   facet_grid(~type, scales = "free") +
+#   fte_theme() +
+#   geom_smooth(model = "lm", 
+#                mapping = aes(net_mig~nominal_wage_everyone),
+#                se = FALSE)  +
+#   scale_x_log10(breaks = seq(40000, 120000, 20000),
+#                 labels = seq(40, 120, 20) %>%
+#                   scales::dollar()) +
+#   labs(x = "2016 nominal income  ($000)", y = "Net migration by skill level")
 
 ### ISSUE 11: Give names to data
 load_place_names <- function(puma_to_migpuma_2010,
