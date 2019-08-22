@@ -1,0 +1,117 @@
+---
+title: "janitors and lawyers"
+author: "Ari Anisfeld"
+date: "April 21, 2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(haven)
+library(readxl)
+library(labelled)
+library(yaml)
+library(broom)
+library(gridExtra)
+library(rprojroot)
+
+if (Sys.getenv()[["USER"]] == "peterganong") {
+  dropbox_path <- "~/repo/data_ipums/convergence/"
+} else {
+  dropbox_path <- "~/gnlab/data_ipums/convergence/"
+}
+
+make_path <- is_git_root$make_fix_file()
+src_path <- make_path("journalist/eduardo_porter/src")
+out_path <- make_path("journalist/eduardo_porter/out")
+working_path <- make_path("journalist/eduardo_porter/")
+source(file.path(working_path, "/code/binscatter.R"))
+CONFIG <- yaml.load_file(file.path(working_path, "/code/config.yml"))
+source(str_c(CONFIG$lab_code, "prelim.R"))
+
+```
+
+```{r ipums}
+# load main data ----
+raw_ipums <- read_dta(file.path(dropbox_path, "usa_00020.dta"))
+# testthat::test_that(expect_equal(nrow(raw_ipums), 24724543))
+```
+
+```{r}                                             
+filtered_sample <-
+  raw_ipums %>%    
+  select(-datanum, -serial, -hhwt) %>%
+  filter(statefip %in% c(1,5, 13, 28, 45, 9, 36, 34, 6, 53),
+        age >= 25, age < 65, gq == 1, pernum == 1) %>%
+  mutate(place = case_when(
+                    statefip %in% c(9, 36, 34) ~ "tristate",
+                    statefip %in% c(1,5, 13, 28, 45) ~ "deep south",
+                    statefip == 6 & countyfip == 85 ~ "santa clara county",
+                    statefip == 53 & countyfip ==33 ~ "king county"
+                    ),
+         order = case_when(
+                    statefip %in% c(9, 36, 34) ~ 4,
+                    statefip %in% c(1,5, 13, 28, 45) ~ 1,
+                    statefip == 6 & countyfip == 85 ~ 2,
+                    statefip == 53 & countyfip ==33 ~ 3
+                    ),
+       occupation = case_when(
+                        (occ==2100 & year==2017) | (year==1960 & occ==105) ~ "lawyer",
+                        (occ==4220 & year==2017) | (year==1960 & occ==834) ~ "janitor"
+                        )) %>%
+  filter(!is.na(occupation), !is.na(place))
+
+
+ipums_prepared <-
+  filtered_sample %>%
+    mutate(incwage = ifelse(incwage >= 999998, NA, incwage),
+           inctot = ifelse(inctot >= 999998, NA, inctot),
+           annual_housing = ifelse(valueh > 999998, 12*rentgrs, valueh*.05),
+           scaled_wage = incwage - annual_housing,
+           scaled_income = inctot - annual_housing) %>%
+    select(-age, -valueh, -rentgrs, -occ, -gq, -statefip, -countyfip)
+
+
+out_data <-
+  ipums_prepared %>%
+    # to get non-self employed data uncomment:
+    # mutate(incbus = ifelse(is.na(incbus00), incbusfm, incbus00),
+    #       self_employed = incbus > 0) %>%
+    # filter(!self_employed) %>%
+    group_by(place, order, year, occupation) %>%
+    mutate(sample_size = n()) %>%
+    summarise_at(vars(inctot, incwage, scaled_income, scaled_wage, sample_size),
+                 ~weighted.mean(., w=perwt, na.rm=TRUE) %>% round()) %>%
+    arrange(order) %>%
+    group_by(year, occupation) %>%
+    mutate("Return to migration" = scales::dollar(scaled_income - first(scaled_income)),
+           "Return to migration (%)"  = scales::percent((scaled_income/first(scaled_income) - 1))) %>%
+    mutate_at(vars(inctot, incwage, scaled_income, scaled_wage),
+                 scales::dollar)
+
+out_data %>%
+  filter(place != "tristate") %>%
+  select(-incwage, -scaled_wage, -order, -sample_size) %>%
+  write_csv(file.path(out_path, "janitor_v_lawyer_counties_v_south.csv"))
+
+
+
+ ipums_prepared %>%
+  mutate(incbus = ifelse(is.na(incbus00), incbusfm, incbus00),
+        self_employed = incbus > 0) %>%
+  group_by(place, order, year, occupation) %>%
+  summarise(self_employed_share = scales::percent(sum(self_employed*perwt)/sum(perwt))) %>%
+   ungroup() %>%
+   select(-order) %>%
+   knitr::kable(format="markdown")
+
+
+
+
+```
