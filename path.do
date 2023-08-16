@@ -1,7 +1,8 @@
 
-if ("`c(username)'" == "peterganong") {
+if ("`c(username)'" == "philipsametsikor") {
 	global code = "~/repo/convergence"
-	global src = "~/Dropbox/convergence/draft4/src_data"
-	global work = "~/Dropbox/convergence/draft4/work_final"
-	global out = "~/Dropbox/convergence/draft4/out_final"
+	global src = "~/repo/convergence/src_data"
+	global work = "~/repo/convergence/work_final"
+	global out = "~/repo/convergence/out_final"
 }
+

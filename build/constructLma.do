@@ -1,4 +1,4 @@
-/*
+  /*
 This pulls together at a county level
 --annual house prices to 1975 FHFA (1000 counties)
 --housing supply elasticity (770 counties)
@@ -135,8 +135,16 @@ replace rentCount = (rentCount[_n-1] + rentCount[_n+2])/2 if year == 1950
 
 
 *evaluate merges
-table year mSaiz if year <= 1970 & mod(fips, 1000) != 0, c(sum pop)
-table year mBeaCounty if year == 1970 | year == 2000, c(sum pop)
+
+
+*table year mSaiz if year <= 1970 & mod(fips, 1000) != 0, c(sum(pop))
+*table year mBeaCounty if year == 1970 | year == 2000, c(sum(pop))
+
+
+
+tabulate year mSaiz if year <= 1970 & mod(fips, 1000) != 0, summarize(pop)
+tabulate year mBeaCounty if year == 1970 | year == 2000, summarize(pop)
+
 
 
 save $work/countyDataPre, replace
@@ -162,8 +170,8 @@ drop if lma == 1
 rename _m mLma
 
 *this is missing about 1/3 of the pop in 1940 and about 1/4 in 2010
-table year mLma  if mod(year,10)==0, c(sum pop)
-table year mMsa  if mod(year,10)==0, c(sum pop)
+table year mLma  if mod(year,10)==0
+table year mMsa  if mod(year,10)==0
 
 compress
 save $work/countyData, replace

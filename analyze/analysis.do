@@ -1,5 +1,4 @@
-
-
+ssc install outreg2
 use $work/state, clear
  keep if year >= 1940
 ***********************
@@ -284,44 +283,49 @@ gen liIncNew = log(beaIncNew)
 sort sid year
 replace dliInc = liIncNew - l20.liInc if year == 2012
 
-mat coef=J(64,8,.)
+* Define and populate the coef matrix
+mat coef = J(64, 8, .)
 local row = 1
 foreach year of numlist 1960/2010 {
-			 qui reg dliInc lagliInc if year == `year' & saiz > 2 , r
-			mat coef[`row',4] = _b[lagliInc]
-			 qui reg dliInc lagliInc if year == `year' & saiz < 2 , r
-			mat coef[`row',5] = _b[lagliInc]
-			 qui reg dliInc lagliInc if year == `year' & !highReg  , r
-			mat coef[`row',7] = _b[lagliInc]
-			 qui reg dliInc lagliInc if year == `year' & highReg, r
-			mat coef[`row',8] = _b[lagliInc]
-		local row = `row'+1
+    qui reg dliInc lagliInc if year == `year' & saiz > 2 , r
+    mat coef[`row', 4] = _b[lagliInc]
+    qui reg dliInc lagliInc if year == `year' & saiz < 2 , r
+    mat coef[`row', 5] = _b[lagliInc]
+    qui reg dliInc lagliInc if year == `year' & !highReg  , r
+    mat coef[`row', 7] = _b[lagliInc]
+    qui reg dliInc lagliInc if year == `year' & highReg, r
+    mat coef[`row', 8] = _b[lagliInc]
+    local row = `row' + 1
 }
-preserve
-clear 
-svmat coef
-gen year = _n + 1959
-drop if year > 2010
-#delimit;
-scatter coef8 year if year >= 1960 , mcolor(maroon)  m(D)
-|| scatter coef7 year if year >= 1960  & year <= 2010, mcolor(edkblue) 
-xlabel(1960(10)2010, ) xtitle(" ") ylabel(,nogrid) 
-ytitle("Convergence for 20-Year Windows at Annual Rate")
-legend(order(1 "Coef High Reg States" 2 "Coef Low Reg States") 
-ring(0) pos(11) rows(2) region(lstyle(none)) size(small))
-subtitle("Split by Land Use Instrument") graphregion(fcolor(white)) 
-saving($work/nomConvergeSplitRegs.gph, replace)  nodraw;
+
+* Extract coefficients as local macros
+local coef8 coef[*, 8]
+local coef7 coef[*, 7]
+local coef5 coef[*, 5]
+local coef4 coef[*, 4]
+
+* Scatter Plot 1: Convergence of Coefficients by Regulation Level
+scatter `coef8' year if year >= 1960 , mcolor(maroon)  m(D) ///
+    || scatter `coef7' year if year >= 1960 & year <= 2010, mcolor(edkblue) ///
+    xlabel(1960(10)2010, ) xtitle(" ") ylabel(,nogrid) ///
+    ytitle("Convergence for 20-Year Windows at Annual Rate") ///
+    legend(order(1 "Coef High Reg States" 2 "Coef Low Reg States") ///
+    ring(0) pos(11) rows(2) region(lstyle(none)) size(small)) ///
+    subtitle("Split by Land Use Instrument") graphregion(fcolor(white)) ///
+    saving("$out/nomConvergeSplitRegs.gph", replace)  nodraw;
+
+* Scatter Plot 2: Convergence of Coefficients by Housing Supply Elasticity
+scatter `coef5' year if year >= 1950, mcolor(maroon)  m(D) ///
+    || scatter `coef4' year if year >= 1950, mcolor(edkblue) ///
+    xlabel(1960(10)2010, ) xtitle(" ") ylabel(,nogrid) ///
+    ytitle("Convergence for 20-Year Windows at Annual Rate") ///
+    legend(order(1 "Coef Constrained States" 2 "Coef Unconstrained States") ///
+    ring(0) pos(11) rows(2) region(lstyle(none)) size(small)) ///
+    subtitle("Split by Saiz Housing Supply Elasticity") graphregion(fcolor(white)) ///
+    saving("$out/nomConvergeSplit.gph", replace) nodraw;
 
 
-#delimit;
-scatter coef5 year if year >= 1950, mcolor(maroon)  m(D)
-|| scatter coef4 year if year >= 1950, mcolor(edkblue)  
-xlabel(1960(10)2010, ) xtitle(" ") ylabel(,nogrid) 
-ytitle("Convergence for 20-Year Windows at Annual Rate")
-legend(order(1 "Coef Constrained States" 2 "Coef Unconstrained States") ring(0) pos(11) rows(2) region(lstyle(none)) size(small))
-subtitle("Split by Saiz Housing Supply Elasticity") graphregion(fcolor(white)) 
-saving($work/nomConvergeSplit.gph, replace) nodraw;
-restore;
+
 
 #delimit;
 gr combine $work/incWest1960.gph $work/incWest2010.gph 
